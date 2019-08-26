@@ -1,10 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
@@ -22,19 +24,19 @@ func init() {
 }
 
 func main() {
-	// database, _ := sql.Open("sqlite3", "mh.db")
-	// statement, _ := database.Prepare("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, firstname TEXT, lastname TEXT)")
-	// statement.Exec()
-	// statement, _ = database.Prepare("INSERT INTO people (firstname, lastname) VALUES (?, ?)")
-	// statement.Exec("Nic", "Raboy")
-	// rows, _ := database.Query("SELECT id, firstname, lastname FROM people")
-	// var id int
-	// var firstname string
-	// var lastname string
-	// for rows.Next() {
-	// 	rows.Scan(&id, &firstname, &lastname)
-	// 	fmt.Println(strconv.Itoa(id) + ": " + firstname + " " + lastname)
-	// }
+	database, _ := sql.Open("sqlite3", "./configs/mh.db")
+	statement, _ := database.Prepare("CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, firstname TEXT, lastname TEXT)")
+	statement.Exec()
+	statement, _ = database.Prepare("INSERT INTO people (firstname, lastname) VALUES (?, ?)")
+	statement.Exec("Nic", "Raboy")
+	rows, _ := database.Query("SELECT id, firstname, lastname FROM people")
+	var id int
+	var firstname string
+	var lastname string
+	for rows.Next() {
+		rows.Scan(&id, &firstname, &lastname)
+		fmt.Println(strconv.Itoa(id) + ": " + firstname + " " + lastname)
+	}
 
 	discord, err := discordgo.New("Bot " + Token)
 	if err != nil {
