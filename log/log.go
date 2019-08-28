@@ -1,5 +1,4 @@
-// Modified template from https://github.com/2Bot/2Bot-Discord-Bot
-package main
+package logging
 
 import (
 	"fmt"
@@ -7,28 +6,29 @@ import (
 	"os"
 )
 
-type logging struct {
+type Logger struct {
 	i *l.Logger
 	e *l.Logger
 	t *l.Logger
 }
 
-func newLog() logging {
-	return logging{
+// NewLog : Instantiate a new logger
+func NewLog() Logger {
+	return Logger{
 		l.New(os.Stdout, "INFO  - ", l.Ldate|l.Ltime),
 		l.New(os.Stdout, "ERROR - ", l.Ldate|l.Ltime),
 		l.New(os.Stdout, "TRACE - ", l.Ldate|l.Ltime),
 	}
 }
 
-func (l logging) Error(f string, s ...interface{}) {
+func (l Logger) Error(f string, s ...interface{}) {
 	l.e.Print(f, " ", fmt.Sprintln(s...))
 }
 
-func (l logging) Info(f string, s ...interface{}) {
+func (l Logger) Info(f string, s ...interface{}) {
 	l.i.Print(f, " ", fmt.Sprintln(s...))
 }
 
-func (l logging) Trace(f string, s ...interface{}) {
+func (l Logger) Trace(f string, s ...interface{}) {
 	l.t.Print(f, " ", fmt.Sprintln(s...))
 }

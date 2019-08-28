@@ -13,9 +13,5 @@
 
 # VSCode folders/settings
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 .vscode/launch.json
 configs/config-LIVE.json

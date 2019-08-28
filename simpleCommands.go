@@ -1,4 +1,3 @@
-// Modified template from https://github.com/2Bot/2Bot-Discord-Bot
 package main
 
 import (

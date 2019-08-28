@@ -173,3 +173,15 @@ func guildDetails(channelID, guildID string, s *discordgo.Session) (guildDetails
 	}
 	return
 }
+
+func setBotGame(s *discordgo.Session) {
+	if err := s.UpdateStatus(0, viper.GetString("game")); err != nil {
+		log.Error("Update status err:", err)
+		return
+	}
+	log.Info("set initial game to", viper.GetString("game"))
+}
+
+func initDbForGuild(m *discordgo.GuildCreate) {
+
+}
