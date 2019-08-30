@@ -33,6 +33,9 @@ var (
 	status       = map[discordgo.Status]string{"dnd": "busy", "online": "online", "idle": "idle", "offline": "offline"}
 	footer       = new(discordgo.MessageEmbedFooter)
 	prefix       = "!mh "
+
+	// BotInstance : The bot instance
+	BotInstance *bot.Instance
 )
 
 func init() {
@@ -64,29 +67,25 @@ func initViper(configFilePath string) {
 
 func main() {
 	initViper("./configs/config.json")
-	fmt.Println(config.GetString("game"))
 	log.Info("======================/ MH Bot Starting \\======================")
 	log.Info("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
 
-	discord, err := discordgo.New("Bot " + Token)
-	if err != nil {
-		log.Error("Error creating session\n", err)
-		return
-	}
+	BotInstance = bot.InitBot(Token)
 
-	discord.AddHandler(readyEvent)
-	discord.AddHandler(guildJoinEvent)
-	installCommands(discord)
+	BotInstance.ClientSession.AddHandler(readyEvent)
+	BotInstance.ClientSession.AddHandler(guildJoinEvent)
+
+	installCommands(BotInstance.ClientSession)
 
 	bot.ReadDML()
 
-	err = discord.Open()
+	err := BotInstance.ClientSession.Open()
 	if err != nil {
 		log.Error("Error opening connection\n", err)
 		return
 	}
 	// Defer the session cleanup until the application is closed
-	defer discord.Close()
+	defer BotInstance.ClientSession.Close()
 
 	// Wait here until CTRL-C or other term signal is received.
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
@@ -102,7 +101,15 @@ func installCommands(session *discordgo.Session) {
 
 	// router command template
 	router.On("ping", func(ctx *exrouter.Context) {
-		log.Trace("test")
+		servers, err := BotInstance.ServerDao.GetAllServers()
+		if err != nil {
+			log.Error("Error calling servers", err)
+		}
+
+		log.Trace("Attempting to find servers")
+		for _, element := range servers {
+			log.Trace("Server: ", element.ServerID)
+		}
 		ctx.Reply("pong!")
 	}).Desc("Responds with pong!")
 

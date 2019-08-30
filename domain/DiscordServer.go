@@ -10,5 +10,5 @@ type DiscordServer struct {
 	JoinTimeUnix int32
 
 	// ORM Fields
-	Guild discordgo.Guild
+	Guild *discordgo.Guild
 }
