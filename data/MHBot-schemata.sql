@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS Servers (
 );
 
 CREATE TABLE IF NOT EXISTS Stats (
-    StatsID             INTEGER Primary Key,
+    StatsID             INTEGER Primary Key AUTOINCREMENT,
     ServerID            INTEGER,
     CommandsUsed        INTEGER,
     EventsRun           INTEGER,
@@ -15,9 +15,10 @@ CREATE TABLE IF NOT EXISTS Stats (
 );
 
 CREATE TABLE IF NOT EXISTS Events (
-    EventID                     INTEGER Primary Key,
+    EventID                     INTEGER Primary Key AUTOINCREMENT,
     ServerID                    VARCHAR(20),
     CreatorID                   VARCHAR(20),
+    EventName                   VARCHAR(256)
     EventLocation               VARCHAR(256),
     HostName                    VARCHAR(256),
     CreationTimestamp           INTEGER,
@@ -36,7 +37,7 @@ CREATE TABLE IF NOT EXISTS Events (
         ); 
 
 CREATE TABLE IF NOT EXISTS Birthdays(
-    BirthdayID INTEGER Primary Key,
+    BirthdayID INTEGER Primary Key AUTOINCREMENT,
     ServerID INTEGER,
     UserID VARCHAR(20),
     BirthMonthNum INTEGER,

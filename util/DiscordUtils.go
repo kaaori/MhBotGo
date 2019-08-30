@@ -1,9 +1,36 @@
 package util
 
-// import (
-// 	_ "github.com/bwmarrin/discordgo"
-// )
+import (
+	"github.com/bwmarrin/discordgo"
+)
 
-// func GetGuildById(serverId string) discordgo.Guild, err {
-// 	s *discordgo.Session
-// }
+var (
+	// MhColor : The default embed colour
+	MhColor = 0x9400d3
+
+	// MhThumb : The default thumbnail image for embeds
+	MhThumb = "https://i.imgur.com/erRDVM7.png"
+)
+
+// GetEmbed : Get Embed by parameters
+func GetEmbed(fields []*discordgo.MessageEmbedField, title string, footer string) *discordgo.MessageEmbed {
+	return &discordgo.MessageEmbed{
+		// Author:      &discordgo.MessageEmbedAuthor{},
+		Color: MhColor, // Green
+		// Description: "This is a discordgo embed",
+		Fields: fields,
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: MhThumb,
+		},
+		// Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
+		Title:  title,
+		Footer: &discordgo.MessageEmbedFooter{Text: footer}}
+}
+
+// GetField : Generate a field object more easily
+func GetField(name string, text string, inline bool) *discordgo.MessageEmbedField {
+	return &discordgo.MessageEmbedField{
+		Value:  text,
+		Name:   name,
+		Inline: inline}
+}

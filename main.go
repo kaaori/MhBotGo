@@ -10,12 +10,17 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
+	"strconv"
+	"strings"
 	"syscall"
+	"time"
 
 	_ "github.com/Necroforger/dgrouter"
 	"github.com/Necroforger/dgrouter/exrouter"
 	"github.com/fsnotify/fsnotify"
 	"github.com/kaaori/mhbotgo/bot"
+	"github.com/kaaori/mhbotgo/domain"
+	"github.com/kaaori/mhbotgo/util"
 	config "github.com/spf13/viper"
 
 	"github.com/bwmarrin/discordgo"
@@ -70,14 +75,17 @@ func main() {
 	log.Info("======================/ MH Bot Starting \\======================")
 	log.Info("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
 
-	BotInstance = bot.InitBot(Token)
+	if _, err := os.Stat(config.GetString("dbLocation")); err != nil {
+		log.Error("DB Not found. Creating in " + config.GetString("dbLocation"))
+		bot.ReadDML(config.GetString("dbLocation"))
+	}
+
+	BotInstance = bot.InitBot(Token, config.GetString("dbLocation"))
 
 	BotInstance.ClientSession.AddHandler(readyEvent)
 	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 
 	installCommands(BotInstance.ClientSession)
-
-	bot.ReadDML()
 
 	err := BotInstance.ClientSession.Open()
 	if err != nil {
@@ -100,22 +108,100 @@ func installCommands(session *discordgo.Session) {
 	router := exrouter.New()
 
 	// router command template
-	router.On("ping", func(ctx *exrouter.Context) {
+	router.On("commandName", func(ctx *exrouter.Context) {
+		// Command code
+		ctx.Reply("Reply text here!")
+	}).Desc("Descriptive text")
+
+	router.On("events", func(ctx *exrouter.Context) {
+		// Matches all in quotes
+		// (["'])(?:(?=(\\?))\2.)*?\1
+		switch strings.ToLower(ctx.Args.Get(1)) {
+		case "add":
+			event := new(domain.Event)
+			event.ServerID = ctx.Msg.GuildID
+			event.CreatorID = ctx.Msg.Author.ID
+			validateNewEventArgs(ctx.Args, ctx, event)
+			BotInstance.EventDao.InsertEvent(event)
+			break
+		case "edit":
+			break
+		case "remove":
+			break
+		default:
+			ctx.Reply(config.GetString("badSyntaxError"))
+			break
+
+		}
+		// for _, _ := range ctx.Args {
+
+		// }
+		ctx.Reply("Args printed")
+	})
+
+	router.On("test", func(ctx *exrouter.Context) {
 		servers, err := BotInstance.ServerDao.GetAllServers()
 		if err != nil {
 			log.Error("Error calling servers", err)
 		}
 
 		log.Trace("Attempting to find servers")
+		userCount := 0
+		guildCount := 0
+		fields := make([]*discordgo.MessageEmbedField, 0)
 		for _, element := range servers {
-			log.Trace("Server: ", element.ServerID)
+			if err != nil {
+				log.Error("Error retrieving guild, probably doesn't exist?")
+				continue
+			}
+
+			guildCount++
+			userCount += element.Guild.MemberCount
 		}
-		ctx.Reply("pong!")
-	}).Desc("Responds with pong!")
+		fieldTest := util.GetField(
+			"Currently Serving",
+			strconv.Itoa(userCount)+" Members, and "+strconv.Itoa(guildCount)+" Guild(s)",
+			false)
+
+		fields = append(fields, fieldTest)
+		outputEmbed := util.GetEmbed(fields, "Test Command!", "Footer!")
+		BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, outputEmbed)
+		// ctx.ReplyEmbed(outputEmbed)
+		// ctx.Reply("Currently serving " + strconv.Itoa(userCount) + " users")
+	}).Desc("Test command")
 
 	session.AddHandler(func(_ *discordgo.Session, m *discordgo.MessageCreate) {
 		router.FindAndExecute(session, prefix, session.State.User.ID, m.Message)
 	})
 
 	log.Info("Commands installed.")
+}
+
+func validateNewEventArgs(args []string, ctx *exrouter.Context, event *domain.Event) {
+	// TODO: Add descriptive examples to errors \/
+	// TODO: Validate el as date
+	if dateString := ctx.Args.Get(2); "" != dateString {
+		event.StartTimestamp = time.Now().Unix() + 10000
+	} else {
+		ctx.Reply("Please check your date format and try again!")
+		return
+	}
+	if hostName := ctx.Args.Get(3); "" != hostName {
+		event.HostName = hostName
+	} else {
+		ctx.Reply("Please ensure you have included a host to your event")
+		return
+	}
+	if name := ctx.Args.Get(4); "" != name {
+		event.Name = name
+	} else {
+		ctx.Reply("Please ensure you have given the event a name")
+		return
+	}
+	if location := ctx.Args.Get(5); "" != location {
+		event.EventLocation = location
+	} else {
+		ctx.Reply("Please ensure you have given the event a location")
+		return
+	}
 }

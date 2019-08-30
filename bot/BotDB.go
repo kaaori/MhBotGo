@@ -2,8 +2,6 @@ package bot
 
 import (
 	"database/sql"
-
-	_ "github.com/kaaori/MhBotGo/dao"
 )
 
 // DB : The core database functions of the bot

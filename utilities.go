@@ -182,6 +182,9 @@ func setBotGame(s *discordgo.Session) {
 	log.Info("set initial game to", viper.GetString("game"))
 }
 
-func initDbForGuild(m *discordgo.GuildCreate) {
-
+func initDbForGuild(guild *discordgo.GuildCreate) {
+	if rowsAffected := BotInstance.ServerDao.InsertNewServer(guild.ID); rowsAffected < 0 {
+		return
+	}
+	log.Info("DB Initialised for guild " + guild.Name)
 }

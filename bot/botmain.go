@@ -9,11 +9,12 @@ import (
 type Instance struct {
 	ClientSession *discordgo.Session
 	ServerDao     dao.DiscordServerDao
+	EventDao      dao.EventDao
 	db            *DB
 }
 
 // InitBot : Initialise a bot instance
-func InitBot(token string) *Instance {
+func InitBot(token string, dbLocation string) *Instance {
 	inst := new(Instance)
 
 	discord, err := discordgo.New("Bot " + token)
@@ -22,7 +23,7 @@ func InitBot(token string) *Instance {
 		return nil
 	}
 
-	newDb, err := initDB("./data/MHBot.db", "sqlite3")
+	newDb, err := initDB(dbLocation, "sqlite3")
 	if err != nil {
 		log.Error("Error loading DB", err)
 		return nil
@@ -31,6 +32,7 @@ func InitBot(token string) *Instance {
 	inst.ClientSession = discord
 	inst.db = newDb
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}
+	inst.EventDao = dao.EventDao{Session: inst.ClientSession}
 
 	return inst
 }

@@ -17,19 +17,20 @@ var (
 )
 
 // ReadDML : Reads the DML from the predefined sql script
-func ReadDML() {
+func ReadDML(dbLocation string) {
 	buf, err := ioutil.ReadFile("./data/MHBot-schemata.sql")
 	if err != nil {
 		log.Error("Error installing table schemata -> ", err)
 		return
 	}
 	log.Info("DML Loaded, creating tables")
-	installDML(string(buf))
+	installDML(string(buf), dbLocation)
 }
 
-func installDML(dml string) {
-	db, err := sql.Open("sqlite3", "./data/MHBot.db")
+func installDML(dml string, dbLocation string) {
+	db, err := sql.Open("sqlite3", dbLocation)
 	isError(err)
+	defer db.Close()
 
 	// = used over := when assigning to "existing" vars only (err is assigned upon opening a connection)
 	// _ used to ignore the first return value of the Exec function, as we don't need it
