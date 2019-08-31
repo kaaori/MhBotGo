@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS Events (
     EventID                     INTEGER Primary Key AUTOINCREMENT,
     ServerID                    VARCHAR(20),
     CreatorID                   VARCHAR(20),
-    EventName                   VARCHAR(256)
+    EventName                   VARCHAR(256),
     EventLocation               VARCHAR(256),
     HostName                    VARCHAR(256),
     CreationTimestamp           INTEGER,

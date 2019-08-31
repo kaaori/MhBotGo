@@ -13,14 +13,18 @@ var (
 )
 
 // GetEmbed : Get Embed by parameters
-func GetEmbed(fields []*discordgo.MessageEmbedField, title string, footer string) *discordgo.MessageEmbed {
+func GetEmbed(title string, footer string, withThumb bool, fields ...*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
+	url := ""
+	if withThumb {
+		url = MhThumb
+	}
 	return &discordgo.MessageEmbed{
 		// Author:      &discordgo.MessageEmbedAuthor{},
 		Color: MhColor, // Green
 		// Description: "This is a discordgo embed",
 		Fields: fields,
 		Thumbnail: &discordgo.MessageEmbedThumbnail{
-			URL: MhThumb,
+			URL: url,
 		},
 		// Timestamp: time.Now().Format(time.RFC3339), // Discord wants ISO8601; RFC3339 is an extension of ISO8601 and should be completely compatible.
 		Title:  title,

@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -15,9 +17,19 @@ type Event struct {
 	StartTimestamp            int64
 	LastAnnouncementTimestamp int64
 	DurationMinutes           int64
-	Name                      string
+	EventName                 string
 
 	// ORM Fields
-	Creator *discordgo.User
-	Server  DiscordServer
+	Creator              *discordgo.User
+	Server               DiscordServer
+	CreationTime         time.Time
+	StartTime            time.Time
+	LastAnnouncementTime time.Time
+	EndTime              time.Time
+}
+
+// ToString : Provides a pretty-print string for the event
+func (e *Event) ToString() string {
+	//• 10:00 PM (Eastern Standard Time) ── BigScreen Hangout ── (Hosted by Haughty:uwu_cowboy: in BigScreen Beta)
+	return "• *" + e.StartTime.UTC().Format(time.Kitchen) + " (Eastern Standard Time)* ── **" + e.EventName + "** ── (Hosted  by ***" + e.HostName + "*** in " + e.EventLocation + ")"
 }

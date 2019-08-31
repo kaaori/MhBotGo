@@ -75,12 +75,14 @@ func (d *DiscordServerDao) InsertNewServer(serverID string) int64 {
 	defer db.Close()
 
 	statement, _ := db.Prepare(query)
-	rowsAffected := executeQueryWithParams(statement, db, serverID, time.Now().Unix())
+	statementResult := executeQueryWithParams(statement, db, serverID, time.Now().Unix())
 
-	if rowsAffected < 0 {
+	if rowsAffected, _ := statementResult.RowsAffected(); rowsAffected < 0 {
 		log.Error("Error inserting server")
+		return -1
 	}
-	return rowsAffected
+	lastID, _ := statementResult.LastInsertId()
+	return lastID
 }
 
 func mapRowToServer(rows sql.Rows, s *discordgo.Session) (domain.DiscordServer, error) {
