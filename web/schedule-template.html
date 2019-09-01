@@ -14,25 +14,104 @@
     #main {
         padding: 10px
     }
+
+    .past-event {
+        text-decoration: line-through
+    }
 </style>
 
 <body>
     <div id="main">
-        <h1>Schedule for {{.CurrentWeekString}}</h1>
+        <h1>Hello, {{.ServerName}}! ❤️</h1>
+        <h3>Here is the current lineup of events for the week of:
+            <br>
+            {{.CurrentWeekString}}.</h3>
+        <h4>Posted times are in <strong>{{.Tz}}</strong></h4>
         <hr />
         <ul>
             <li>Monday</li>
             <ul>
                 {{range .MondayEvents}}
+                {{if .HasPassed}}
+                <!--Strike thru style here-->
+                <li class="past-event">{{.PrettyPrint}}</li>
+                {{else}}
                 <li>{{.PrettyPrint}}</li>
+                {{end}}
                 {{end}}
             </ul>
             <li>Tuesday</li>
+            <ul>
+                {{range .TuesdayEvents}}
+                {{if .HasPassed}}
+                <!--Strike thru style here-->
+                <li class="past-event">{{.PrettyPrint}}</li>
+                {{else}}
+                <li>{{.PrettyPrint}}</li>
+
+                {{end}}
+                {{end}}
+            </ul>
             <li>Wednesday</li>
+            <ul>
+                {{range .WednesdayEvents}}
+                {{if .HasPassed}}
+                <!--Strike thru style here-->
+                <li class="past-event">{{.PrettyPrint}}</li>
+                {{else}}
+                <li>{{.PrettyPrint}}</li>
+
+                {{end}}
+                {{end}}
+            </ul>
             <li>Thursday</li>
+            <ul>
+                {{range .ThursdayEvents}}
+                {{if .HasPassed}}
+                <!--Strike thru style here-->
+                <li class="past-event">{{.PrettyPrint}}</li>
+                {{else}}
+                <li>{{.PrettyPrint}}</li>
+
+                {{end}}
+                {{end}}
+            </ul>
             <li>Friday</li>
+            <ul>
+                {{range .FridayEvents}}
+                {{if .HasPassed}}
+                <!--Strike thru style here-->
+                <li class="past-event">{{.PrettyPrint}}</li>
+                {{else}}
+                <li>{{.PrettyPrint}}</li>
+
+                {{end}}
+                {{end}}
+            </ul>
             <li>Saturday</li>
+            <ul>
+                {{range .SaturdayEvents}}
+                {{if .HasPassed}}
+                <!--Strike thru style here-->
+                <li class="past-event">{{.PrettyPrint}}</li>
+                {{else}}
+                <li>{{.PrettyPrint}}</li>
+
+                {{end}}
+                {{end}}
+            </ul>
             <li>Sunday</li>
+            <ul>
+                {{range .SundayEvents}}
+                {{if .HasPassed}}
+                <!--Strike thru style here-->
+                <li class="past-event">{{.PrettyPrint}}</li>
+                {{else}}
+                <li>{{.PrettyPrint}}</li>
+
+                {{end}}
+                {{end}}
+            </ul>
         </ul>
     </div>
 

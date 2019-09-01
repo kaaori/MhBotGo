@@ -69,20 +69,82 @@ func installCommands(session *discordgo.Session) {
 			return
 		}
 
-		evtViews := make([]*domain.EventView, 0)
+		monEvts := make([]*domain.EventView, 0)
+		tuesEvts := make([]*domain.EventView, 0)
+		wedEvts := make([]*domain.EventView, 0)
+		thursEvts := make([]*domain.EventView, 0)
+		friEvts := make([]*domain.EventView, 0)
+		satEvts := make([]*domain.EventView, 0)
+		sunEvts := make([]*domain.EventView, 0)
 
 		for _, el := range events {
-			evtViews = append(evtViews, &domain.EventView{
-				PrettyPrint:    el.ToString(),
-				StartTimestamp: el.StartTimestamp,
-				HasPassed:      time.Now().UTC().After(el.StartTime)})
-		}
+			dayOfWeek := el.StartTime.Weekday()
+			switch dayOfWeek {
+			case time.Monday:
+				monEvts = append(monEvts, &domain.EventView{
+					PrettyPrint:    el.ToString(),
+					StartTimestamp: el.StartTimestamp,
+					HasPassed:      time.Now().UTC().After(el.StartTime),
+					DayOfWeek:      el.StartTime.Weekday().String()})
+				break
+			case time.Tuesday:
+				tuesEvts = append(monEvts, &domain.EventView{
+					PrettyPrint:    el.ToString(),
+					StartTimestamp: el.StartTimestamp,
+					HasPassed:      time.Now().UTC().After(el.StartTime),
+					DayOfWeek:      el.StartTime.Weekday().String()})
+				break
+			case time.Wednesday:
+				wedEvts = append(monEvts, &domain.EventView{
+					PrettyPrint:    el.ToString(),
+					StartTimestamp: el.StartTimestamp,
+					HasPassed:      time.Now().UTC().After(el.StartTime),
+					DayOfWeek:      el.StartTime.Weekday().String()})
+				break
+			case time.Thursday:
+				thursEvts = append(monEvts, &domain.EventView{
+					PrettyPrint:    el.ToString(),
+					StartTimestamp: el.StartTimestamp,
+					HasPassed:      time.Now().UTC().After(el.StartTime),
+					DayOfWeek:      el.StartTime.Weekday().String()})
+				break
+			case time.Friday:
+				friEvts = append(monEvts, &domain.EventView{
+					PrettyPrint:    el.ToString(),
+					StartTimestamp: el.StartTimestamp,
+					HasPassed:      time.Now().UTC().After(el.StartTime),
+					DayOfWeek:      el.StartTime.Weekday().String()})
+				break
+			case time.Saturday:
+				satEvts = append(monEvts, &domain.EventView{
+					PrettyPrint:    el.ToString(),
+					StartTimestamp: el.StartTimestamp,
+					HasPassed:      time.Now().UTC().After(el.StartTime),
+					DayOfWeek:      el.StartTime.Weekday().String()})
+				break
+			case time.Sunday:
+				sunEvts = append(monEvts, &domain.EventView{
+					PrettyPrint:    el.ToString(),
+					StartTimestamp: el.StartTimestamp,
+					HasPassed:      time.Now().UTC().After(el.StartTime),
+					DayOfWeek:      el.StartTime.Weekday().String()})
+				break
 
+			}
+		}
+		_, isoWeek := t.ISOWeek()
+		firstDayOfWeek := util.FirstDayOfISOWeek(t.Year(), isoWeek, t.Location())
 		data := domain.ScheduleView{
 			ServerName:        g.Name,
-			CurrentWeekString: t.String(),
+			CurrentWeekString: string(firstDayOfWeek.Format("January 2, 2006") + " ── " + firstDayOfWeek.AddDate(0, 0, 7).Format("January 2, 2006")),
 			Tz:                "<strong>Eastern Standard Time</strong>",
-			MondayEvents:      evtViews}
+			MondayEvents:      monEvts,
+			TuesdayEvents:     tuesEvts,
+			WednesdayEvents:   wedEvts,
+			ThursdayEvents:    thursEvts,
+			FridayEvents:      friEvts,
+			SaturdayEvents:    satEvts,
+			SundayEvents:      sunEvts}
 
 		tmpl.Execute(f, data)
 		f.Close()
@@ -199,7 +261,7 @@ func installCommands(session *discordgo.Session) {
 func getEmbedFromEvent(event *domain.Event, ctx *exrouter.Context, eventEmbedText string) *discordgo.MessageEmbed {
 	t := time.Unix(event.StartTimestamp, 0)
 	timeObj := t.Format("January 2, 2006")
-	baseField := util.GetField("Event "+eventEmbedText+timeObj, event.ToString(), false)
+	baseField := util.GetField("Event "+eventEmbedText+timeObj, event.ToEmbedString(), false)
 	baseEmbed := util.GetEmbed("", "Test footer", false, baseField)
 	return baseEmbed
 }

@@ -30,8 +30,14 @@ type Event struct {
 
 // ToString : Provides a pretty-print string for the event
 func (e *Event) ToString() string {
-	//• 10:00 PM (Eastern Standard Time) ── BigScreen Hangout ── (Hosted by Haughty:uwu_cowboy: in BigScreen Beta)
 	return "<em>" + e.StartTime.UTC().Format(time.Kitchen) +
 		" (Eastern Standard Time)</em> ── <strong>" + e.EventName +
 		"</strong> ── (Hosted  by <strong><em>" + e.HostName + "</em></strong> in " + e.EventLocation + ")"
+}
+
+// ToEmbedString : Provides a pretty-print string for the event in a discord embed
+func (e *Event) ToEmbedString() string {
+	return "• *" + e.StartTime.UTC().Format(time.Kitchen) +
+		" (Eastern Standard Time)* ── **" + e.EventName + "** ── (Hosted  by ***" + e.HostName +
+		"*** in " + e.EventLocation + ")"
 }

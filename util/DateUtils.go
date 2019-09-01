@@ -2,6 +2,7 @@ package util
 
 import "time"
 
+// FirstDayOfISOWeek : Gets the time object for the first date in a given week (extracted from time.Now())
 func FirstDayOfISOWeek(year int, week int, timezone *time.Location) time.Time {
 	date := time.Date(year, 0, 0, 0, 0, 0, 0, timezone)
 	isoYear, isoWeek := date.ISOWeek()

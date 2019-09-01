@@ -64,6 +64,13 @@ func initViper(configFilePath string) {
 	}
 }
 
+func initDbForGuild(guild *discordgo.GuildCreate) {
+	if rowsAffected := BotInstance.ServerDao.InsertNewServer(guild.ID); rowsAffected < 0 {
+		return
+	}
+	log.Info("DB Initialised for guild " + guild.Name)
+}
+
 func main() {
 	initViper("./configs/config.json")
 	log.Info("======================/ MH Bot Starting \\======================")

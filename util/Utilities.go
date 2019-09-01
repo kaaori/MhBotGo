@@ -1,5 +1,4 @@
-// Modified template from https://github.com/2Bot/2Bot-Discord-Bot
-package main
+package util
 
 import (
 	"math/rand"
@@ -7,9 +6,15 @@ import (
 	"strings"
 	"time"
 
+	logging "github.com/kaaori/mhbotgo/log"
+
 	"github.com/spf13/viper"
 
 	"github.com/bwmarrin/discordgo"
+)
+
+var (
+	log = logging.NewLog()
 )
 
 //From Necroforger's dgwidgets
@@ -174,17 +179,10 @@ func guildDetails(channelID, guildID string, s *discordgo.Session) (guildDetails
 	return
 }
 
-func setBotGame(s *discordgo.Session) {
+func SetBotGame(s *discordgo.Session) {
 	if err := s.UpdateStatus(0, viper.GetString("game")); err != nil {
 		log.Error("Update status err:", err)
 		return
 	}
 	log.Info("set initial game to", viper.GetString("game"))
-}
-
-func initDbForGuild(guild *discordgo.GuildCreate) {
-	if rowsAffected := BotInstance.ServerDao.InsertNewServer(guild.ID); rowsAffected < 0 {
-		return
-	}
-	log.Info("DB Initialised for guild " + guild.Name)
 }

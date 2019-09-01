@@ -3,11 +3,12 @@ package main
 
 import (
 	"github.com/bwmarrin/discordgo"
+	"github.com/kaaori/mhbotgo/util"
 )
 
 func readyEvent(s *discordgo.Session, ready *discordgo.Ready) {
 	log.Trace("received ready event")
-	setBotGame(s)
+	util.SetBotGame(s)
 }
 
 func guildJoinEvent(s *discordgo.Session, guild *discordgo.GuildCreate) {
