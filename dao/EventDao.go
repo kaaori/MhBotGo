@@ -13,6 +13,33 @@ type EventDao struct {
 	Session *discordgo.Session
 }
 
+func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, error) {
+	query := "select * from Events where ServerID = ?"
+	events := make([]*domain.Event, 0)
+
+	db := get()
+	defer db.Close()
+
+	statement, _ := db.Prepare(query)
+
+	rows, err := queryForRowsWithParams(statement, db, serverID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		event, err := mapRowToEvent(rows, d.Session)
+		if err != nil {
+			return nil, err
+		}
+
+		events = append(events, event)
+	}
+
+	return events, err
+}
+
 // GetEventByID : Gets an event by its ID
 func (d *EventDao) GetEventByID(ID string) (*domain.Event, error) {
 	query := "select * from Events where EventID = ?"

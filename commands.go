@@ -1,14 +1,18 @@
 package main
 
 import (
+	"os"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/snabb/isoweek"
 
 	"github.com/Necroforger/dgrouter/exrouter"
 	"github.com/bwmarrin/discordgo"
+	"github.com/kaaori/MhBotGo/chrome"
 	"github.com/kaaori/mhbotgo/domain"
 	"github.com/kaaori/mhbotgo/util"
 	config "github.com/spf13/viper"
@@ -22,6 +26,86 @@ func installCommands(session *discordgo.Session) {
 	router.On("commandName", func(ctx *exrouter.Context) {
 		// Command code
 		ctx.Reply("Reply text here!")
+	}).Desc("Descriptive text")
+
+	router.On("gctest", func(ctx *exrouter.Context) {
+		chrome.TakeScreenshot()
+		f, err := os.Open("schedule.png")
+		if err != nil {
+			log.Error("Error getting schedule image", err)
+			return
+		}
+		defer f.Close()
+
+		ms := &discordgo.MessageSend{
+			Files: []*discordgo.File{
+				&discordgo.File{
+					Name:   "schedule.png",
+					Reader: f,
+				},
+			},
+		}
+
+		BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
+	}).Desc("Descriptive text")
+
+	router.On("gctemplate", func(ctx *exrouter.Context) {
+		tmpl, err := template.ParseFiles("./web/schedule-template.html")
+		if err != nil {
+			panic(err)
+		}
+		year, week := time.Now().ISOWeek()
+		t := isoweek.StartTime(year, week, time.Now().Location())
+
+		g, _ := ctx.Guild(ctx.Msg.GuildID)
+		f, err := os.Create("./web/schedule-parsed.html")
+		if err != nil {
+			log.Error("create file: ", err)
+			return
+		}
+		events, err := BotInstance.EventDao.GetAllEventsForServer(ctx.Msg.GuildID)
+		if err != nil {
+			log.Error("", err)
+			return
+		}
+
+		evtViews := make([]*domain.EventView, 0)
+
+		for _, el := range events {
+			evtViews = append(evtViews, &domain.EventView{
+				PrettyPrint:    el.ToString(),
+				StartTimestamp: el.StartTimestamp,
+				HasPassed:      time.Now().UTC().After(el.StartTime)})
+		}
+
+		data := domain.ScheduleView{
+			ServerName:        g.Name,
+			CurrentWeekString: t.String(),
+			Tz:                "<strong>Eastern Standard Time</strong>",
+			MondayEvents:      evtViews}
+
+		tmpl.Execute(f, data)
+		f.Close()
+
+		chrome.TakeScreenshot()
+
+		f, err = os.Open("schedule.png")
+		if err != nil {
+			log.Error("Error getting schedule image", err)
+			return
+		}
+		defer f.Close()
+
+		ms := &discordgo.MessageSend{
+			Files: []*discordgo.File{
+				&discordgo.File{
+					Name:   "schedule.png",
+					Reader: f,
+				},
+			},
+		}
+
+		BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
 	}).Desc("Descriptive text")
 
 	router.On("events", func(ctx *exrouter.Context) {
@@ -49,18 +133,21 @@ func installCommands(session *discordgo.Session) {
 			BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
 			return
 		case "remove":
-			if t, isValid := validateDateString(ctx, ctx.Args.Get(2)); !isValid {
+			t, isValid := validateDateString(ctx, ctx.Args.Get(2))
+			if !isValid {
+				// The method call above handles outputting the error to the user and console.
 				return
-			} else {
-				referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(t.Unix())
-				if err != nil || referencedEvent == nil {
-					ctx.Reply("Could not find that event, please try again")
-					return
-				}
-				BotInstance.EventDao.DeleteEventByID(referencedEvent.EventID)
-				embed := getEmbedFromEvent(referencedEvent, ctx, "deleted from ")
-				BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
 			}
+
+			referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(t.Unix())
+			if err != nil || referencedEvent == nil {
+				ctx.Reply("Could not find that event, please try again")
+				return
+			}
+			BotInstance.EventDao.DeleteEventByID(referencedEvent.EventID)
+			embed := getEmbedFromEvent(referencedEvent, ctx, "deleted from ")
+			BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
+
 			break
 		// case "edit":
 		// 	break
@@ -134,11 +221,13 @@ func validateDateString(ctx *exrouter.Context, dateString string) (time.Time, bo
 func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 	// TODO: Add descriptive examples to errors \/
 	// TODO: Validate el as date
-	if t, isValid := validateDateString(ctx, strconv.FormatInt(event.StartTimestamp, 10)); !isValid {
+	t, isValid := validateDateString(ctx, strconv.FormatInt(event.StartTimestamp, 10))
+	if !isValid {
+		// The method call above handles outputting the error to the user and console.
 		return false
-	} else {
-		event.StartTimestamp = t.UTC().Unix()
 	}
+
+	event.StartTimestamp = t.UTC().Unix()
 
 	if hostName := ctx.Args.Get(3); "" != hostName {
 		event.HostName = hostName
