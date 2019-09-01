@@ -3,12 +3,13 @@ package main
 
 import (
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/mhbotgo/util"
+	"github.com/kaaori/MhBotGo/util"
+	"github.com/spf13/viper"
 )
 
 func readyEvent(s *discordgo.Session, ready *discordgo.Ready) {
 	log.Trace("received ready event")
-	util.SetBotGame(s)
+	util.SetBotGame(s, viper.GetString("game"))
 }
 
 func guildJoinEvent(s *discordgo.Session, guild *discordgo.GuildCreate) {

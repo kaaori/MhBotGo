@@ -7,10 +7,13 @@ import (
 
 // Instance : The current instance of the bot and its session
 type Instance struct {
-	ClientSession *discordgo.Session
-	ServerDao     dao.DiscordServerDao
-	EventDao      dao.EventDao
-	db            *DB
+	ClientSession       *discordgo.Session
+	ServerDao           dao.DiscordServerDao
+	EventDao            dao.EventDao
+	AnnouncementChannel string
+	ScheduleChannel     string
+	HasClearedSchedule  bool
+	db                  *DB
 }
 
 // InitBot : Initialise a bot instance
@@ -33,6 +36,7 @@ func InitBot(token string, dbLocation string) *Instance {
 	inst.db = newDb
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}
 	inst.EventDao = dao.EventDao{Session: inst.ClientSession}
+	inst.HasClearedSchedule = false
 
 	return inst
 }

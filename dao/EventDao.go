@@ -5,12 +5,38 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/kaaori/MhBotGo/util"
 	"github.com/kaaori/mhbotgo/domain"
 )
 
 // EventDao : Contains data access methods for stored server events
 type EventDao struct {
 	Session *discordgo.Session
+}
+
+func (d *EventDao) GetEventCountForServer(serverID string) int {
+	query := "select Count(*) from Events where ServerID = ?"
+	db := get()
+	defer db.Close()
+
+	statement, _ := db.Prepare(query)
+
+	rows, err := queryForRowsWithParams(statement, db, serverID)
+	if err != nil {
+		return -1
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		log.Error("No events found")
+		return -1
+	}
+	var count int
+	rows.Scan(&count)
+	if err != nil {
+		return -1
+	}
+	return count
 }
 
 func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, error) {
@@ -99,22 +125,26 @@ func (d *EventDao) GetEventByStartTime(startTime int64) (*domain.Event, error) {
 // UpdateEvent : Updates an event by object
 // Returns ID of new event
 func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
-	query := `	UDPATE Events 
-				SET 
-					ServerID = ?,
-					CreatorID = ?,
-					EventLocation = ?,
-					HostName = ?,
-					CreationTimestamp = ?
-					StartTimestamp = ?
-					LastAnnouncementTimestamp = ?
-					DurationMinutes = ?
-				WHERE 
-					EventID = ?`
+	query := "UPDATE Events " +
+		"	SET " +
+		"		ServerID = ?," +
+		"		CreatorID = ?," +
+		"		EventLocation = ?," +
+		"		HostName = ?," +
+		"		CreationTimestamp = ?," +
+		"		StartTimestamp = ?," +
+		"		LastAnnouncementTimestamp = ?," +
+		"		DurationMinutes = ?" +
+		"	WHERE " +
+		"		EventID = ?"
 	db := get()
 	defer db.Close()
 
-	statement, _ := db.Prepare(query)
+	statement, err := db.Prepare(query)
+	if err != nil {
+		log.Error("Error updating event", err)
+		return -1
+	}
 	statementResult := executeQueryWithParams(statement, db,
 		event.ServerID, event.CreatorID, event.EventLocation, event.HostName,
 		event.CreationTimestamp, event.StartTimestamp, event.LastAnnouncementTimestamp, event.DurationMinutes,
@@ -202,7 +232,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session) *domai
 	statement, _ := db.Prepare(query)
 	statementResult := executeQueryWithParams(statement, db,
 		event.ServerID, event.CreatorID, event.EventName, event.EventLocation, event.HostName,
-		event.CreationTimestamp, event.StartTimestamp, -1, event.DurationMinutes)
+		event.CreationTimestamp-util.EstLocOffset, event.StartTimestamp-util.EstLocOffset, -1, event.DurationMinutes)
 
 	if rowsAffected, _ := statementResult.RowsAffected(); rowsAffected < 0 {
 		log.Error("Error inserting server")
@@ -262,11 +292,9 @@ func mapORMFields(event *domain.Event, s *discordgo.Session) (*domain.Event, err
 	}
 	event.Creator = creator
 
-	// TODO FIX THESE
-	// For now I will just use the unix timestamp directly
-	event.CreationTime = time.Unix(event.CreationTimestamp, 0)
-	event.StartTime = time.Unix(event.StartTimestamp, 0)
+	event.CreationTime = time.Unix(event.CreationTimestamp, 0).In(util.EstLoc)
+	event.StartTime = time.Unix(event.StartTimestamp, 0).In(util.EstLoc)
 	event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
-	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes))
+	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.EstLoc)
 	return event, err
 }

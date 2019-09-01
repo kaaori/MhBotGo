@@ -1,6 +1,18 @@
 package util
 
-import "time"
+import (
+	"time"
+)
+
+var (
+	EstLoc, _    = time.LoadLocation("America/New_York")
+	EstLocOffset = int64(getEstOffset())
+)
+
+func getEstOffset() int {
+	_, offset := time.Now().In(EstLoc).Zone()
+	return offset
+}
 
 // FirstDayOfISOWeek : Gets the time object for the first date in a given week (extracted from time.Now())
 func FirstDayOfISOWeek(year int, week int, timezone *time.Location) time.Time {
@@ -25,5 +37,5 @@ func FirstDayOfISOWeek(year int, week int, timezone *time.Location) time.Time {
 		isoYear, isoWeek = date.ISOWeek()
 	}
 
-	return date
+	return date.In(EstLoc)
 }

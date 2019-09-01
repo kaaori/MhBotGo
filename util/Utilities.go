@@ -35,7 +35,7 @@ func nextMessageCreate(s *discordgo.Session) chan *discordgo.MessageCreate {
 }
 
 func randRange(min, max int) int {
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().Unix() - EstLocOffset)
 	if max == 0 {
 		return 0
 	}
@@ -179,10 +179,11 @@ func guildDetails(channelID, guildID string, s *discordgo.Session) (guildDetails
 	return
 }
 
-func SetBotGame(s *discordgo.Session) {
-	if err := s.UpdateStatus(0, viper.GetString("game")); err != nil {
+func SetBotGame(s *discordgo.Session, game string) {
+	// if err := s.UpdateStatus(0, viper.GetString("game")); err != nil {
+	if err := s.UpdateStatus(0, game); err != nil {
 		log.Error("Update status err:", err)
 		return
 	}
-	log.Info("set initial game to", viper.GetString("game"))
+	log.Info("set initial game to", game)
 }

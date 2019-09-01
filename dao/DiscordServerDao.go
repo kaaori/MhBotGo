@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/kaaori/MhBotGo/util"
 	"github.com/kaaori/mhbotgo/domain"
 )
 
@@ -75,7 +76,7 @@ func (d *DiscordServerDao) InsertNewServer(serverID string) int64 {
 	defer db.Close()
 
 	statement, _ := db.Prepare(query)
-	statementResult := executeQueryWithParams(statement, db, serverID, time.Now().Unix())
+	statementResult := executeQueryWithParams(statement, db, serverID, time.Now().Unix()-util.EstLocOffset)
 
 	if rowsAffected, _ := statementResult.RowsAffected(); rowsAffected < 0 {
 		log.Error("Error inserting server")

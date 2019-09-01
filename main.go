@@ -1,7 +1,3 @@
-/**************************************************************************
-* A majority of this will be refactored and broken up into packages later *
-***************************************************************************/
-
 package main
 
 import (
@@ -12,9 +8,11 @@ import (
 	"regexp"
 	"syscall"
 
-	_ "github.com/Necroforger/dgrouter"
+	"github.com/kaaori/MhBotGo/scheduler"
+
 	"github.com/fsnotify/fsnotify"
-	"github.com/kaaori/mhbotgo/bot"
+	"github.com/kaaori/MhBotGo/bot"
+	"github.com/kaaori/MhBotGo/commands"
 	config "github.com/spf13/viper"
 
 	"github.com/bwmarrin/discordgo"
@@ -82,11 +80,15 @@ func main() {
 	}
 
 	BotInstance = bot.InitBot(Token, config.GetString("dbLocation"))
-
+	BotInstance.ClientSession.State.MaxMessageCount = 100
 	BotInstance.ClientSession.AddHandler(readyEvent)
 	BotInstance.ClientSession.AddHandler(guildJoinEvent)
+	BotInstance.AnnouncementChannel = config.GetString("announcements")
+	BotInstance.ScheduleChannel = config.GetString("schedule")
 
-	installCommands(BotInstance.ClientSession)
+	go scheduler.Init(BotInstance)
+
+	commands.InstallCommands(BotInstance)
 
 	err := BotInstance.ClientSession.Open()
 	if err != nil {
