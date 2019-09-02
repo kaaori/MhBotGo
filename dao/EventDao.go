@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/kaaori/MhBotGo/domain"
 	"github.com/kaaori/MhBotGo/util"
-	"github.com/kaaori/mhbotgo/domain"
 )
 
 // EventDao : Contains data access methods for stored server events
@@ -14,6 +14,7 @@ type EventDao struct {
 	Session *discordgo.Session
 }
 
+// GetEventCountForServer : Gets the total count of events for a server
 func (d *EventDao) GetEventCountForServer(serverID string) int {
 	query := "select Count(*) from Events where ServerID = ?"
 	db := get()
@@ -39,6 +40,7 @@ func (d *EventDao) GetEventCountForServer(serverID string) int {
 	return count
 }
 
+// GetAllEventsForServer : Gets all the events by a given server ID
 func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, error) {
 	query := "select * from Events where ServerID = ?"
 	events := make([]*domain.Event, 0)
@@ -64,6 +66,40 @@ func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, erro
 	}
 
 	return events, err
+}
+
+// GetNextEventOrDefault : Gets the next occuring event or nil
+func (d *EventDao) GetNextEventOrDefault(guildID string) (*domain.Event, error) {
+	// unixNowEst := time.Now().Unix() - util.EstLocOffset
+	query := "select * from Events where ServerID = ? order by StartTimestamp desc"
+	// query := "select * from Events where ServerID = ? and StartTimestamp < ? order by StartTimestamp desc"
+
+	db := get()
+	defer db.Close()
+
+	statement, err := db.Prepare(query)
+	if err != nil {
+		log.Error("Error retrieving next event", err)
+		return nil, err
+	}
+
+	rows, err := queryForRowsWithParams(statement, db, guildID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		log.Error("No events for guild by id " + guildID + " found")
+		return nil, err
+	}
+
+	event, err := mapRowToEvent(rows, d.Session)
+	if err != nil {
+		return nil, err
+	}
+
+	return event, err
 }
 
 // GetEventByID : Gets an event by its ID
@@ -94,16 +130,16 @@ func (d *EventDao) GetEventByID(ID string) (*domain.Event, error) {
 	return event, err
 }
 
-// GetEventByStartTime : Gets an event by its start time
-func (d *EventDao) GetEventByStartTime(startTime int64) (*domain.Event, error) {
-	query := "select * from Events where StartTimestamp = ? limit 1"
+// GetEventByStartTime : Gets an event by its start time and server
+func (d *EventDao) GetEventByStartTime(guildID string, startTime int64) (*domain.Event, error) {
+	query := "select * from Events where StartTimestamp = ? and ServerID = ? limit 1"
 
 	db := get()
 	defer db.Close()
 
 	statement, _ := db.Prepare(query)
 
-	rows, err := queryForRowsWithParams(statement, db, startTime)
+	rows, err := queryForRowsWithParams(statement, db, startTime, guildID)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +222,10 @@ func (d *EventDao) DeleteEventByStartTime(startTime int64) int64 {
 	db := get()
 	defer db.Close()
 
-	statement, _ := db.Prepare(query)
+	statement, err := db.Prepare(query)
+	if err != nil {
+		return -1
+	}
 	statementResult := executeQueryWithParams(statement, db,
 		startTime)
 
@@ -264,13 +303,13 @@ func mapRowToEvent(rows *sql.Rows, s *discordgo.Session) (*domain.Event, error) 
 		&event.LastAnnouncementTimestamp,
 		&event.DurationMinutes)
 	if err != nil {
-		return event, err
+		return nil, err
 	}
 
 	event, err = mapORMFields(event, s)
 	if err != nil {
 		log.Error("Error mapping ORM Fields in event", err)
-		return event, err
+		return nil, err
 	}
 
 	return event, err
@@ -296,5 +335,7 @@ func mapORMFields(event *domain.Event, s *discordgo.Session) (*domain.Event, err
 	event.StartTime = time.Unix(event.StartTimestamp, 0).In(util.EstLoc)
 	event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
 	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.EstLoc)
+	event.TzOffset = util.EstLocOffset
+	event.TzLoc = util.EstLoc
 	return event, err
 }

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -14,8 +15,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/kaaori/MhBotGo/bot"
 	"github.com/kaaori/MhBotGo/chrome"
+	"github.com/kaaori/MhBotGo/domain"
 	"github.com/kaaori/MhBotGo/util"
-	"github.com/kaaori/mhbotgo/domain"
 	"github.com/snabb/isoweek"
 )
 
@@ -119,6 +120,10 @@ func parseAndSendSched(ctx *exrouter.Context) {
 }
 
 func addEvent(ctx *exrouter.Context) bool {
+	if len(ctx.Args) < 4 {
+		ctx.Reply("Please check your command format and try again.")
+		return false
+	}
 	event := new(domain.Event)
 	event.ServerID = ctx.Msg.GuildID
 	event.CreatorID = ctx.Msg.Author.ID
@@ -141,13 +146,17 @@ func addEvent(ctx *exrouter.Context) bool {
 }
 
 func removeEvent(ctx *exrouter.Context) bool {
+	if len(ctx.Args) < 4 {
+		ctx.Reply("Please check your command format and try again.")
+		return false
+	}
 	t, isValid := validateDateString(ctx, ctx.Args.Get(2))
 	if !isValid {
 		// The method call above handles outputting the error to the user and console.
 		return false
 	}
 
-	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(t.Unix())
+	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(ctx.Msg.GuildID, t.Unix()-util.EstLocOffset)
 	if err != nil || referencedEvent == nil {
 		ctx.Reply("Could not find that event, please try again")
 		return false
@@ -190,6 +199,7 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 	return true
 }
 
+// GetEmbedFromEvent : Returns a discord embed with the relevant event details
 func GetEmbedFromEvent(event *domain.Event, eventEmbedText string) *discordgo.MessageEmbed {
 	t := time.Unix(event.StartTimestamp, 0)
 	timeObj := t.In(util.EstLoc).Format("January 2, 2006")
@@ -198,6 +208,7 @@ func GetEmbedFromEvent(event *domain.Event, eventEmbedText string) *discordgo.Me
 	return baseEmbed
 }
 
+// GetAnnounceEmbedFromEvent : Gets an announcement embed from the given event
 func GetAnnounceEmbedFromEvent(event *domain.Event, eventEmbedText string, eventEmbedTitle string) *discordgo.MessageEmbed {
 	baseField := util.GetField(eventEmbedTitle, eventEmbedText, false)
 	baseEmbed := util.GetEmbed("", "", false, baseField)
@@ -228,8 +239,9 @@ func Auth(fn exrouter.HandlerFunc) exrouter.HandlerFunc {
 		var botAdminRole *discordgo.Role
 		guildRoles, _ := ctx.Ses.GuildRoles(member.GuildID)
 		for _, r := range guildRoles {
-			if sliceutil.Contains(authRoles, r.Name) {
+			if r.Name == BotInstance.EventRunnerRoleName {
 				botAdminRole = r
+				break
 			}
 		}
 		if botAdminRole == nil {
@@ -248,6 +260,7 @@ func Auth(fn exrouter.HandlerFunc) exrouter.HandlerFunc {
 	}
 }
 
+// FindSchedChannel : Finds the schedule channel for a given guild
 func FindSchedChannel(guild *discordgo.Guild, inst *bot.Instance) *discordgo.Channel {
 	var schedChannel *discordgo.Channel
 	for _, schedChannel = range guild.Channels {
@@ -263,6 +276,7 @@ func FindSchedChannel(guild *discordgo.Guild, inst *bot.Instance) *discordgo.Cha
 	return schedChannel
 }
 
+//FindAnnouncementsChannel : Finds the announcements channel for a given guild
 func FindAnnouncementsChannel(guild *discordgo.Guild, inst *bot.Instance) *discordgo.Channel {
 	var announcementChannel *discordgo.Channel
 	for _, announcementChannel = range guild.Channels {
@@ -278,6 +292,7 @@ func FindAnnouncementsChannel(guild *discordgo.Guild, inst *bot.Instance) *disco
 	return announcementChannel
 }
 
+// GetSchedMessage : Gets the current schedule image posted, if exists, else nil
 func GetSchedMessage(schedChannelID string, inst *bot.Instance) *discordgo.Message {
 	msgHistory, _ := inst.ClientSession.ChannelMessages(schedChannelID, 100, "", "", "")
 
@@ -287,13 +302,13 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) *discordgo.Messa
 		if schedMsg != nil {
 			inst.ClientSession.ChannelMessageDelete(msg.ChannelID, msg.ID)
 		} else if msg.Author.ID == inst.ClientSession.State.User.ID {
-			log.Trace("Schedule msg found")
 			schedMsg = msg
 		}
 	}
 	return schedMsg
 }
 
+// SendSchedule : Parses and sends the schedule message to a given channel
 func SendSchedule(schedChannelID string, inst *bot.Instance) {
 	schedMsg := GetSchedMessage(schedChannelID, inst)
 
@@ -319,4 +334,42 @@ func SendSchedule(schedChannelID string, inst *bot.Instance) {
 	}
 
 	inst.ClientSession.ChannelMessageSendComplex(schedChannelID, ms)
+}
+
+func getMinutesTilNextString(nextEvent *domain.Event) string {
+	minutesUntilNext := math.Round(time.Until(nextEvent.StartTime).Minutes())
+	minutesStr := ""
+	if minutesUntilNext > 60 {
+		hrs := math.Round(time.Until(nextEvent.StartTime).Hours())
+		hrsPlural := ""
+		if hrs <= 1 {
+			hrsPlural = " hour"
+		} else {
+			hrsPlural = " hours"
+		}
+		minutesStr = strconv.FormatFloat(hrs, 'f', -1, 64) + hrsPlural + " until next event!"
+	} else {
+		minutesStr = strconv.FormatFloat(minutesUntilNext, 'f', -1, 64) +
+			" minutes until the next event!"
+	}
+	return "\n" + minutesStr
+}
+
+func getMinutesSinceLastString(lastEvent *domain.Event) string {
+	minutesSinceLast := math.Round(time.Since(lastEvent.StartTime).Minutes())
+	minutesStr := ""
+	if minutesSinceLast > 60 {
+		hrs := math.Round(time.Since(lastEvent.StartTime).Hours())
+		hrsPlural := ""
+		if hrs <= 1 {
+			hrsPlural = " hour"
+		} else {
+			hrsPlural = " hours"
+		}
+		minutesStr = strconv.FormatFloat(hrs, 'f', -1, 64) + hrsPlural + " since the last event!"
+	} else {
+		minutesStr = strconv.FormatFloat(minutesSinceLast, 'f', -1, 64) +
+			" minutes since the last event!"
+	}
+	return "\n" + minutesStr
 }

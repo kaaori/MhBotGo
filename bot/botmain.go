@@ -3,6 +3,7 @@ package bot
 import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/kaaori/MhBotGo/dao"
+	"github.com/spf13/viper"
 )
 
 // Instance : The current instance of the bot and its session
@@ -13,6 +14,7 @@ type Instance struct {
 	AnnouncementChannel string
 	ScheduleChannel     string
 	HasClearedSchedule  bool
+	EventRunnerRoleName string
 	db                  *DB
 }
 
@@ -37,6 +39,7 @@ func InitBot(token string, dbLocation string) *Instance {
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}
 	inst.EventDao = dao.EventDao{Session: inst.ClientSession}
 	inst.HasClearedSchedule = false
+	inst.EventRunnerRoleName = viper.GetString("EventRunnerRole")
 
 	return inst
 }

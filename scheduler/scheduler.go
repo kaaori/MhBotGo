@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/spf13/viper"
@@ -21,17 +22,23 @@ var (
 type Scheduler struct{}
 
 // Init : Initialises the schedule timer tasks
-func Init(inst *bot.Instance) *Scheduler {
+func Init(inst *bot.Instance) {
+	log.Info("Scheduler tasks starting.")
+
 	gocron.Every(1).Sunday().At("3:45").Do(ClearSchedules, inst)
 	gocron.Start()
 
-	// for t := range time.NewTicker(90 * time.Second).C {
 	for t := range time.NewTicker(10 * time.Second).C {
-		log.Info("Updating schedule")
-
+		// log.Info("Updating schedule")
+		defer func() {
+			if err := recover(); err != nil {
+				// if we're in here, we had a panic and have caught it
+				fmt.Printf("Panic deferred in scheduler: %s\n", err)
+			}
+		}()
 		checkEvents(t, inst)
 	}
-	return &Scheduler{}
+	// return &Scheduler{}
 }
 
 // ClearSchedules : Deletes any open schedules that may be floating around and refreshes them
@@ -65,15 +72,21 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			commands.ParseTemplate(g.ID)
 			commands.SendSchedule(schedChannel.ID, inst)
 		}
-		// TODO Check if Event
-
 		// TODO Write GetAllEventsForServerForWeek(g.ID, t.Now().ISOWeek() or .Weekday()))
-		evts, _ := inst.EventDao.GetAllEventsForServer(g.ID)
+		evts, err := inst.EventDao.GetAllEventsForServer(g.ID)
+		if err != nil {
+			log.Error("Error fetching events for guild "+g.Name, err)
+			continue
+		}
 		for _, evt := range evts {
 			timeTilEvt := time.Until(evt.StartTime)
 			timeSinceEvt := time.Since(evt.StartTime)
-			// timeSinceAnnounce := time.Since(evt.LastAnnouncementTime)
 			announcementChannel := commands.FindAnnouncementsChannel(g, inst)
+
+			if announcementChannel == nil {
+				log.Error("Could not find announcement channel")
+				break
+			}
 			var announcement string
 			body := ""
 
@@ -86,12 +99,10 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 				evt.StartTime.After(evt.LastAnnouncementTime) {
 				announcement = "**___" + evt.EventName + "___**" + " **has started!**"
 				body = evt.ToStartingString()
-				util.SetBotGame(inst.ClientSession, evt.EventName)
+				util.SetBotGame(inst.ClientSession, "Party Time!", evt)
 				commands.ParseTemplate(g.ID)
 				commands.SendSchedule(schedChannel.ID, inst)
 				go baitAndSwitchGame(inst)
-			} else if timeSinceEvt.Hours() >= 2 {
-
 			} else {
 				continue
 			}
@@ -107,5 +118,5 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 // Wait an hour then change game back
 func baitAndSwitchGame(inst *bot.Instance) {
 	time.Sleep(1 * time.Hour)
-	util.SetBotGame(inst.ClientSession, viper.GetString("game"))
+	util.SetBotGame(inst.ClientSession, viper.GetString("game"), nil)
 }

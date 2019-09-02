@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/Necroforger/dgrouter/exrouter"
@@ -30,6 +31,7 @@ func refreshAuthRoles() {
 
 // InstallCommands : Installs the commands
 func InstallCommands(instance *bot.Instance) {
+
 	refreshAuthRoles()
 	BotInstance = instance
 	session = instance.ClientSession
@@ -41,6 +43,11 @@ func InstallCommands(instance *bot.Instance) {
 	// 	// Command code
 	// 	ctx.Reply("Reply text here!")
 	// }).Desc("Descriptive text")
+
+	router.On("testgamestatus", func(ctx *exrouter.Context) {
+		evt, _ := BotInstance.EventDao.GetNextEventOrDefault(ctx.Msg.GuildID)
+		util.SetBotGame(ctx.Ses, "Party Time!", evt)
+	})
 
 	router.On("gctemplate", func(ctx *exrouter.Context) {
 		ParseTemplate(ctx.Msg.GuildID)
@@ -67,6 +74,7 @@ func InstallCommands(instance *bot.Instance) {
 	}).Desc("Descriptive text")
 
 	router.Group(func(r *exrouter.Route) {
+
 		r.Use(Auth)
 
 		r.On("events", nil).
@@ -81,6 +89,42 @@ func InstallCommands(instance *bot.Instance) {
 					parseAndSendSched(ctx)
 				}
 			})
+		r.On("events", nil).
+			On("stats", func(ctx *exrouter.Context) {
+				count := BotInstance.EventDao.GetEventCountForServer(ctx.Msg.GuildID)
+				if count < 0 {
+					ctx.Reply("Error retrieving stats, please try again later.")
+					return
+				}
+
+				guild, err := ctx.Guild(ctx.Msg.GuildID)
+				if err != nil {
+					ctx.Reply("Error retrieving stats, please try again later.")
+					return
+				}
+
+				nextEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID)
+				nextEventStr := ""
+				if err != nil {
+					log.Error("Error retrieving next event")
+					ctx.Reply("Error retrieving stats, please try again later.")
+					return
+				} else if nextEvent != nil {
+					if time.Now().Before(nextEvent.StartTime) {
+						nextEventStr = getMinutesTilNextString(nextEvent)
+
+					} else {
+						nextEventStr = getMinutesSinceLastString(nextEvent)
+					}
+				}
+				statField := util.GetField("Event stats for *"+guild.Name+"*",
+					"Events held in this server - **"+strconv.Itoa(count)+"**"+
+						nextEventStr, false)
+				emb := util.GetEmbed("", "", true, statField)
+				ms := &discordgo.MessageSend{
+					Embed: emb}
+				BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
+			})
 	})
 
 	router.On("servertime", func(ctx *exrouter.Context) {
@@ -88,14 +132,17 @@ func InstallCommands(instance *bot.Instance) {
 		ctx.Reply("According to my watch, it is " + time.Now().In(util.EstLoc).Format("Mon Jan 2 15:04:05 -0700 EST! 2006") + " <3")
 	})
 
-	session.AddHandler(func(_ *discordgo.Session, m *discordgo.MessageCreate) {
+	session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		defer func() {
+			if err := recover(); err != nil {
+				// if we're in here, we had a panic and have caught it
+				s.ChannelMessageSend(m.ChannelID, "Sorry, something when wrong running your command. "+
+					"Please check your command usage or try again later.")
+				fmt.Printf("Panic deferred in command [%s]: %s\n", m.Content, err)
+			}
+		}()
 		router.FindAndExecute(session, prefix, session.State.User.ID, m.Message)
 	})
 
 	log.Info("Commands installed.")
-}
-
-func test(ctx *exrouter.Context) {
-	removeEvent(ctx)
-	parseAndSendSched(ctx)
 }

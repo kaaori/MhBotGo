@@ -5,7 +5,10 @@ import (
 )
 
 var (
-	EstLoc, _    = time.LoadLocation("America/New_York")
+	// EstLoc : Server tz
+	EstLoc, _ = time.LoadLocation("America/New_York")
+
+	// EstLocOffset : The EST offset from unix time
 	EstLocOffset = int64(getEstOffset())
 )
 

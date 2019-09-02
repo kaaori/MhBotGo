@@ -1,8 +1,17 @@
 package dao
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+)
 
 func queryForRows(query string, db *sql.DB) (*sql.Rows, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in query", r)
+		}
+	}()
+
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
@@ -11,6 +20,12 @@ func queryForRows(query string, db *sql.DB) (*sql.Rows, error) {
 }
 
 func queryForRowsWithParams(statement *sql.Stmt, db *sql.DB, args ...interface{}) (*sql.Rows, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in query", r)
+		}
+	}()
+
 	rows, err := statement.Query(args...)
 	if err != nil {
 		return nil, err
@@ -19,6 +34,12 @@ func queryForRowsWithParams(statement *sql.Stmt, db *sql.DB, args ...interface{}
 }
 
 func executeQueryWithParams(statement *sql.Stmt, db *sql.DB, args ...interface{}) sql.Result {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in query with params", r)
+		}
+	}()
+
 	result, err := statement.Exec(args...)
 	if err != nil {
 		return nil

@@ -9,7 +9,7 @@ import (
 
 func readyEvent(s *discordgo.Session, ready *discordgo.Ready) {
 	log.Trace("received ready event")
-	util.SetBotGame(s, viper.GetString("game"))
+	util.SetBotGame(s, viper.GetString("game"), nil)
 }
 
 func guildJoinEvent(s *discordgo.Session, guild *discordgo.GuildCreate) {

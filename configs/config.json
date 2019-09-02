@@ -9,5 +9,6 @@
     "botAuthRoles": [
         "BotAdmin",
         "EventRunner"
-    ]
+    ],
+    "eventRunnerRole": "EventRunner"
 }

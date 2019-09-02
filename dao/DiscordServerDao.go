@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/kaaori/MhBotGo/domain"
 	"github.com/kaaori/MhBotGo/util"
-	"github.com/kaaori/mhbotgo/domain"
 )
 
 // DiscordServerDao : Contains data access methods for stored discord servers
