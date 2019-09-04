@@ -8,25 +8,32 @@
     <title>Schedule test</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="schedule.css"/>
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata|Pacifico|Quicksand&display=swap" rel="stylesheet"> 
+
 </head>
 
-<style>
+<!--style>
     #main {
-        padding: 10px
+        padding: 10px;
     }
 
     .past-event {
         text-decoration: line-through
     }
-</style>
+</style-->
+<!--"-->
 
 <body>
     <div id="main">
-        <h1>Hello, {{.ServerName}}! ❤️</h1>
-        <h3>Here is the current lineup of events for the week of:
-            <br>
-            {{.CurrentWeekString}}.</h3>
-        <h4>Posted times are in <strong>{{.Tz}}</strong></h4>
+        <div id="banner">
+            <!--img class="img" src="./images/mhlogo.jpg" width="128" height="128" alt="Midnight Haven logo"-->
+            <h3>Hello, {{.ServerName}}! ❤️</h3>
+            <h4>Here is the current lineup of events for the week of:
+                <br>
+                {{.CurrentWeekString}}.</h4>
+            <h5>Posted times are in <strong>{{.Tz}}</strong></h5>
+        </div>
         <hr />
         <ul>
             <li>Monday</li>
