@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/Necroforger/dgrouter/exrouter"
@@ -91,40 +90,8 @@ func InstallCommands(instance *bot.Instance) {
 			})
 		r.On("events", nil).
 			On("stats", func(ctx *exrouter.Context) {
-				count := BotInstance.EventDao.GetEventCountForServer(ctx.Msg.GuildID)
-				if count < 0 {
-					ctx.Reply("Error retrieving stats, please try again later.")
-					return
-				}
-
-				guild, err := ctx.Guild(ctx.Msg.GuildID)
-				if err != nil {
-					ctx.Reply("Error retrieving stats, please try again later.")
-					return
-				}
-
-				nextEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID)
-				nextEventStr := ""
-				if err != nil {
-					log.Error("Error retrieving next event")
-					ctx.Reply("Error retrieving stats, please try again later.")
-					return
-				} else if nextEvent != nil {
-					if time.Now().Before(nextEvent.StartTime) {
-						nextEventStr = getMinutesTilNextString(nextEvent)
-
-					} else {
-						nextEventStr = getMinutesSinceLastString(nextEvent)
-					}
-				}
-				statField := util.GetField("Event stats for *"+guild.Name+"*",
-					"Events held in this server - **"+strconv.Itoa(count)+"**"+
-						nextEventStr, false)
-				emb := util.GetEmbed("", "", true, statField)
-				ms := &discordgo.MessageSend{
-					Embed: emb}
-				BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
-			})
+				postEventStats(ctx)
+			}).Alias("next", "last")
 	})
 
 	router.On("servertime", func(ctx *exrouter.Context) {

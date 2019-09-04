@@ -1,7 +1,6 @@
 /*schedule css - Hippuu 9/3/19  #2e2a30 #221f24*/
 
-#main
-{
+#main {
 
     font-family: 'Inconsolata', monospace;
     color: #b1a9b9;
@@ -9,26 +8,24 @@
     background-color: #2e2a30;
 }
 
-#banner
-{
+#banner {
     position: relative;
-    width: 50%;
+    width: 100%;
     height: 128px;
-    background: linear-gradient(to left, #3c373f , #3c373f 35%, transparent),url("./images/mhlogo.jpg")no-repeat left;
+    background: linear-gradient(to left, #3c373f, #3c373f 45%, transparent), url("./images/mhlogo.jpg")no-repeat left;
 
     border: 2px solid #1b191d;
     border-radius: 8px;
     box-shadow: 8px 8px #252227;
-    
+
 }
-.img
-{
+
+.img {
     margin: 2px;
     float: left;
 }
 
-h3
-{
+h3 {
     font-family: 'Pacifico', cursive;
     position: absolute;
     top: 1px;
@@ -37,8 +34,7 @@ h3
     text-shadow: -1px 0 black, 0 2px black, 2px 0 black, 0 -1px black;
 }
 
-h4
-{
+h4 {
     font-family: 'Quicksand', sans-serif;
     position: absolute;
     top: 35px;
@@ -47,8 +43,7 @@ h4
     text-shadow: -1px 0 black, 0 2px black, 2px 0 black, 0 -1px black;
 }
 
-h5
-{
+h5 {
     position: absolute;
     bottom: 1px;
     right: 10px;

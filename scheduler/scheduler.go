@@ -25,9 +25,10 @@ type Scheduler struct{}
 func Init(inst *bot.Instance) {
 	log.Info("Scheduler tasks starting.")
 
-	gocron.Every(1).Sunday().At("3:45").Do(ClearSchedules, inst)
+	gocron.Every(1).Monday().At("3:45").Do(ClearSchedules, inst)
 	gocron.Start()
 
+	var i int64
 	for t := range time.NewTicker(10 * time.Second).C {
 		// log.Info("Updating schedule")
 		defer func() {
@@ -36,7 +37,11 @@ func Init(inst *bot.Instance) {
 				fmt.Printf("Panic deferred in scheduler: %s\n", err)
 			}
 		}()
+		if i%(6) == 0 {
+
+		}
 		checkEvents(t, inst)
+		i++
 	}
 	// return &Scheduler{}
 }
@@ -59,6 +64,7 @@ func ClearSchedules(inst *bot.Instance) {
 	}
 }
 
+// Runs every 10 seconds
 func checkEvents(t time.Time, inst *bot.Instance) {
 	for _, g := range inst.ClientSession.State.Guilds {
 
@@ -73,11 +79,13 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			commands.SendSchedule(schedChannel.ID, inst)
 		}
 		// TODO Write GetAllEventsForServerForWeek(g.ID, t.Now().ISOWeek() or .Weekday()))
-		evts, err := inst.EventDao.GetAllEventsForServer(g.ID)
+		weekTime := util.GetCurrentWeekFromMondayAsTime()
+		evts, err := inst.EventDao.GetAllEventsForServerForWeek(g.ID, weekTime)
 		if err != nil {
 			log.Error("Error fetching events for guild "+g.Name, err)
 			continue
 		}
+
 		for _, evt := range evts {
 			timeTilEvt := time.Until(evt.StartTime)
 			timeSinceEvt := time.Since(evt.StartTime)
@@ -110,7 +118,6 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			evt.LastAnnouncementTimestamp = time.Now().Unix()
 			inst.EventDao.UpdateEvent(evt)
 			inst.ClientSession.ChannelMessageSendEmbed(announcementChannel.ID, commands.GetAnnounceEmbedFromEvent(evt, body, announcement))
-
 		}
 	}
 }

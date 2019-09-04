@@ -3,17 +3,6 @@ CREATE TABLE IF NOT EXISTS Servers (
     JoinTimeUnix    INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS Stats (
-    StatsID             INTEGER Primary Key AUTOINCREMENT,
-    ServerID            INTEGER,
-    CommandsUsed        INTEGER,
-    EventsRun           INTEGER,
-    LastEventTimeUnix   INTEGER,
-    BirthdaysRegistered INTEGER,
-
-    FOREIGN KEY(ServerID) REFERENCES Servers(ServerID)
-);
-
 CREATE TABLE IF NOT EXISTS Events (
     EventID                     INTEGER Primary Key AUTOINCREMENT,
     ServerID                    VARCHAR(20),

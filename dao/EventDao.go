@@ -14,6 +14,62 @@ type EventDao struct {
 	Session *discordgo.Session
 }
 
+// GetAllEventsForServerForWeek : Gets a server's events within a week range
+func (d *EventDao) GetAllEventsForServerForWeek(serverID string, weekTime time.Time) ([]*domain.Event, error) {
+	query := "select * from Events where ServerID = ? and StartTimestamp between ? AND ?"
+	events := make([]*domain.Event, 0)
+
+	db := get()
+	defer db.Close()
+
+	statement, _ := db.Prepare(query)
+
+	rows, err := queryForRowsWithParams(statement, db, serverID, weekTime.Unix()-util.EstLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.EstLocOffset+(2*3600))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		event, err := mapRowToEvent(rows, d.Session)
+		if err != nil {
+			return nil, err
+		}
+
+		events = append(events, event)
+	}
+
+	return events, err
+}
+
+// GetEventsCountForServerForWeek : Gets the # of a server's events within a week range
+func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time.Time) int {
+	query := "select Count(*) from Events where ServerID = ? and StartTimestamp between ? AND ?"
+
+	db := get()
+	defer db.Close()
+
+	statement, _ := db.Prepare(query)
+
+	// -2*3600 for 2 hr buffer between midnight & an events start
+	rows, err := queryForRowsWithParams(statement, db, serverID, weekTime.Unix()-util.EstLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.EstLocOffset+(2*3600))
+	if err != nil {
+		return -1
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		log.Error("No events found")
+		return 0
+	}
+	var count int
+	rows.Scan(&count)
+	if err != nil {
+		return -1
+	}
+	return count
+}
+
 // GetEventCountForServer : Gets the total count of events for a server
 func (d *EventDao) GetEventCountForServer(serverID string) int {
 	query := "select Count(*) from Events where ServerID = ?"
@@ -30,7 +86,7 @@ func (d *EventDao) GetEventCountForServer(serverID string) int {
 
 	if !rows.Next() {
 		log.Error("No events found")
-		return -1
+		return 0
 	}
 	var count int
 	rows.Scan(&count)

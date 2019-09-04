@@ -12,6 +12,12 @@ var (
 	EstLocOffset = int64(getEstOffset())
 )
 
+// GetCurrentWeekFromMondayAsTime : Gets the time object representing the current week starting @ monday
+func GetCurrentWeekFromMondayAsTime() time.Time {
+	_, week := time.Now().ISOWeek()
+	return FirstDayOfISOWeek(time.Now().Year(), week, EstLoc)
+}
+
 func getEstOffset() int {
 	_, offset := time.Now().In(EstLoc).Zone()
 	return offset

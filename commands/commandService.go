@@ -38,7 +38,8 @@ func ParseTemplate(guildID string) {
 	}
 	defer f.Close()
 
-	events, err := BotInstance.EventDao.GetAllEventsForServer(guildID)
+	weekTime := util.GetCurrentWeekFromMondayAsTime()
+	events, err := BotInstance.EventDao.GetAllEventsForServerForWeek(guildID, weekTime)
 	if err != nil {
 		log.Error("", err)
 		return
@@ -117,6 +118,44 @@ func parseAndSendSched(ctx *exrouter.Context) {
 	channel := FindSchedChannel(g, BotInstance)
 
 	SendSchedule(channel.ID, BotInstance)
+}
+
+func postEventStats(ctx *exrouter.Context) {
+	count := BotInstance.EventDao.GetEventCountForServer(ctx.Msg.GuildID)
+	weekTime := util.GetCurrentWeekFromMondayAsTime()
+	weekCount := BotInstance.EventDao.GetEventsCountForServerForWeek(ctx.Msg.GuildID, weekTime)
+	if count < 0 || weekCount < 0 {
+		ctx.Reply("Error retrieving stats, please try again later.")
+		return
+	}
+
+	guild, err := ctx.Guild(ctx.Msg.GuildID)
+	if err != nil {
+		ctx.Reply("Error retrieving stats, please try again later.")
+		return
+	}
+
+	nextEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID)
+	nextEventStr := ""
+	if err != nil {
+		log.Error("Error retrieving next event")
+		ctx.Reply("Error retrieving stats, please try again later.")
+		return
+	} else if nextEvent != nil {
+		if time.Now().Before(nextEvent.StartTime) {
+			nextEventStr = getMinutesTilNextString(nextEvent)
+
+		} else {
+			nextEventStr = getMinutesSinceLastString(nextEvent)
+		}
+	}
+	statField := util.GetField("Event stats for *"+guild.Name+"*",
+		"Events held in this server - **"+strconv.Itoa(count)+"** *("+strconv.Itoa(weekCount)+" this week)*"+
+			nextEventStr, false)
+	emb := util.GetEmbed("", "", true, statField)
+	ms := &discordgo.MessageSend{
+		Embed: emb}
+	BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
 }
 
 func addEvent(ctx *exrouter.Context) bool {

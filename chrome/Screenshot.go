@@ -31,6 +31,10 @@ func TakeScreenshot() {
 
 	// capture entire browser viewport, returning png with quality=90
 	var buf []byte
+	// if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
+	// 	"#main", &buf)); err != nil {
+	// 	log.Fatal(err)
+	// }
 	if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
 		"#main", &buf)); err != nil {
 		log.Fatal(err)
@@ -43,6 +47,19 @@ func TakeScreenshot() {
 // elementScreenshot takes a screenshot of a specific element.
 func elementScreenshot(urlstr, sel string, res *[]byte) chromedp.Tasks {
 	return chromedp.Tasks{
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			width, height := int64(950), int64(1080)
+			err := emulation.SetDeviceMetricsOverride(width, height, 1, false).
+				WithScreenOrientation(&emulation.ScreenOrientation{
+					Type:  emulation.OrientationTypeLandscapePrimary,
+					Angle: 0,
+				}).
+				Do(ctx)
+			if err != nil {
+				return err
+			}
+			return nil
+		}),
 		chromedp.Navigate(urlstr),
 		chromedp.WaitVisible(sel, chromedp.ByID),
 		chromedp.Screenshot(sel, res, chromedp.NodeVisible, chromedp.ByID),
@@ -65,7 +82,7 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte) chromedp.Tasks {
 			}
 
 			// width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
-			width, height := int64(1280), int64(720)
+			width, height := int64(1600), int64(900)
 
 			// force viewport emulation
 			err = emulation.SetDeviceMetricsOverride(width, height, 1, false).
@@ -84,7 +101,7 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte) chromedp.Tasks {
 				WithClip(&page.Viewport{
 					X:      contentSize.X,
 					Y:      contentSize.Y,
-					Width:  contentSize.Width,
+					Width:  float64(width),
 					Height: contentSize.Height,
 					Scale:  1,
 				}).Do(ctx)

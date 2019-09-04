@@ -45,13 +45,15 @@ func (e *Event) ToEmbedString() string {
 		"*** in " + e.EventLocation + ")"
 }
 
+// ToAnnounceString : Gets the string representing the pre-starting announcement for the given event
 func (e *Event) ToAnnounceString() string {
 	return "**" + e.HostName + "** is about to start this event in " +
 		e.EventLocation + " at **" + e.StartTime.Format("3:04 PM") +
 		" (Eastern Standard Time)!**"
 }
 
+// ToStartingString : Gets the string representing the starting announcement for the given event
 func (e *Event) ToStartingString() string {
-	return "Join up on **" + e.HostName + "**! This event is taking place at " +
-		e.StartTime.Format("3:04 PM") + ", and will last roughly 2 hours"
+	return "Join up on **" + e.HostName + "**! This event is taking place at **" +
+		e.StartTime.Format("3:04 PM") + "**, and will last roughly 2 hours"
 }
