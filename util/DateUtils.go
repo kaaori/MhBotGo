@@ -5,23 +5,33 @@ import (
 )
 
 var (
-	// EstLoc : Server tz
-	EstLoc, _ = time.LoadLocation("America/New_York")
+	// ServerTz : Server tz and offset
+	ServerTz string
 
-	// EstLocOffset : The EST offset from unix time
-	EstLocOffset = int64(getEstOffset())
+	// ServerLocOffset : The int64 offset from unix time of the server
+	ServerLocOffset int64
+
+	// ServerLoc : Locale of the current server
+	ServerLoc *time.Location
 )
+
+func init() {
+	ServerLoc = time.Local
+	serverTz, locOffsetInt := time.Now().In(ServerLoc).Zone()
+	ServerLocOffset = int64(locOffsetInt)
+	ServerTz = serverTz
+}
 
 // GetCurrentWeekFromMondayAsTime : Gets the time object representing the current week starting @ monday
 func GetCurrentWeekFromMondayAsTime() time.Time {
 	_, week := time.Now().ISOWeek()
-	return FirstDayOfISOWeek(time.Now().Year(), week, EstLoc)
+	return FirstDayOfISOWeek(time.Now().Year(), week, ServerLoc)
 }
 
-func getEstOffset() int {
-	_, offset := time.Now().In(EstLoc).Zone()
-	return offset
-}
+// func getEstOffset() int64 {
+// 	_, offset := time.Now().In(ServerLoc).Zone()
+// 	return int64(offset)
+// }
 
 // FirstDayOfISOWeek : Gets the time object for the first date in a given week (extracted from time.Now())
 func FirstDayOfISOWeek(year int, week int, timezone *time.Location) time.Time {
@@ -46,5 +56,5 @@ func FirstDayOfISOWeek(year int, week int, timezone *time.Location) time.Time {
 		isoYear, isoWeek = date.ISOWeek()
 	}
 
-	return date.In(EstLoc)
+	return date.In(ServerLoc)
 }

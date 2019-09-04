@@ -27,8 +27,8 @@ func ParseTemplate(guildID string) {
 	if err != nil {
 		panic(err)
 	}
-	year, week := time.Now().In(util.EstLoc).ISOWeek()
-	t := isoweek.StartTime(year, week, time.Now().In(util.EstLoc).Location())
+	year, week := time.Now().In(util.ServerLoc).ISOWeek()
+	t := isoweek.StartTime(year, week, time.Now().In(util.ServerLoc).Location())
 
 	g, _ := BotInstance.ClientSession.Guild(guildID)
 	f, err := os.Create("./web/schedule-parsed.html")
@@ -108,7 +108,7 @@ func appendEventToList(targetList []*domain.EventView, e *domain.Event) []*domai
 	return append(targetList, &domain.EventView{
 		PrettyPrint:    e.ToString(),
 		StartTimestamp: e.StartTimestamp,
-		HasPassed:      time.Now().In(util.EstLoc).After(e.StartTime),
+		HasPassed:      time.Now().In(util.ServerLoc).After(e.StartTime),
 		DayOfWeek:      e.StartTime.Weekday().String()})
 }
 
@@ -195,7 +195,7 @@ func removeEvent(ctx *exrouter.Context) bool {
 		return false
 	}
 
-	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(ctx.Msg.GuildID, t.Unix()-util.EstLocOffset)
+	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(ctx.Msg.GuildID, t.Unix()-util.ServerLocOffset)
 	if err != nil || referencedEvent == nil {
 		ctx.Reply("Could not find that event, please try again")
 		return false
@@ -241,7 +241,7 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 // GetEmbedFromEvent : Returns a discord embed with the relevant event details
 func GetEmbedFromEvent(event *domain.Event, eventEmbedText string) *discordgo.MessageEmbed {
 	t := time.Unix(event.StartTimestamp, 0)
-	timeObj := t.In(util.EstLoc).Format("January 2, 2006")
+	timeObj := t.In(util.ServerLoc).Format("January 2, 2006")
 	baseField := util.GetField("Event "+eventEmbedText+timeObj, event.ToEmbedString(), false)
 	baseEmbed := util.GetEmbed("", "Test footer", false, baseField)
 	return baseEmbed
@@ -260,11 +260,11 @@ func validateDateString(ctx *exrouter.Context, dateString string) (time.Time, bo
 		if err != nil {
 			log.Error("Invalid time format? ", err)
 			ctx.Reply("Please check your date format and try again")
-			return time.Now().In(util.EstLoc), false
+			return time.Now().In(util.ServerLoc), false
 		}
-		return t.In(util.EstLoc), true
+		return t.In(util.ServerLoc), true
 	}
-	return time.Now().In(util.EstLoc), false
+	return time.Now().In(util.ServerLoc), false
 
 }
 

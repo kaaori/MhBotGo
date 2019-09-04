@@ -96,7 +96,7 @@ func InstallCommands(instance *bot.Instance) {
 
 	router.On("servertime", func(ctx *exrouter.Context) {
 		fmt.Println(time.Now().Location())
-		ctx.Reply("According to my watch, it is " + time.Now().In(util.EstLoc).Format("Mon Jan 2 15:04:05 -0700 EST! 2006") + " <3")
+		ctx.Reply("According to my watch, it is " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006") + " <3")
 	})
 
 	session.AddHandler(func(s *discordgo.Session, m *discordgo.MessageCreate) {

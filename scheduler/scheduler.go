@@ -37,7 +37,7 @@ func Init(inst *bot.Instance) {
 				fmt.Printf("Panic deferred in scheduler: %s\n", err)
 			}
 		}()
-		if i%(6) == 0 {
+		if i%6 == 0 {
 
 		}
 		checkEvents(t, inst)
@@ -100,11 +100,11 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 
 			// Unannounced = -1
 			if timeTilEvt.Minutes() <= 20 &&
-				evt.LastAnnouncementTimestamp < 0 {
+				evt.LastAnnouncementTimestamp < 0 && timeSinceEvt < 0 {
 				announcement = "**___" + evt.EventName + "___**" + " in *20 minutes!*"
 				body = evt.ToAnnounceString()
 			} else if timeSinceEvt.Seconds() >= 0 &&
-				evt.StartTime.After(evt.LastAnnouncementTime) {
+				evt.StartTime.After(evt.LastAnnouncementTime) && timeSinceEvt < 3600 {
 				announcement = "**___" + evt.EventName + "___**" + " **has started!**"
 				body = evt.ToStartingString()
 				util.SetBotGame(inst.ClientSession, "Party Time!", evt)

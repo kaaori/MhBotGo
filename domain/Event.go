@@ -38,7 +38,7 @@ func (e *Event) ToString() string {
 }
 
 // ToEmbedString : Provides a pretty-print string for the event in a discord embed
-// Est Loc offset is calculated here as this is before it touches the DB and is adjusted
+// Server Loc offset is calculated here as this is before it touches the DB and is adjusted
 func (e *Event) ToEmbedString() string {
 	return "• *" + time.Unix(e.StartTimestamp-e.TzOffset, 0).Format(time.Kitchen) +
 		" (Eastern Standard Time)* ── **" + e.EventName + "** ── (Hosted  by ***" + e.HostName +

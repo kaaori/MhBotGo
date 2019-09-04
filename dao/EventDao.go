@@ -24,7 +24,7 @@ func (d *EventDao) GetAllEventsForServerForWeek(serverID string, weekTime time.T
 
 	statement, _ := db.Prepare(query)
 
-	rows, err := queryForRowsWithParams(statement, db, serverID, weekTime.Unix()-util.EstLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.EstLocOffset+(2*3600))
+	rows, err := queryForRowsWithParams(statement, db, serverID, weekTime.Unix()-util.ServerLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.ServerLocOffset+(2*3600))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time
 	statement, _ := db.Prepare(query)
 
 	// -2*3600 for 2 hr buffer between midnight & an events start
-	rows, err := queryForRowsWithParams(statement, db, serverID, weekTime.Unix()-util.EstLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.EstLocOffset+(2*3600))
+	rows, err := queryForRowsWithParams(statement, db, serverID, weekTime.Unix()-util.ServerLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.ServerLocOffset+(2*3600))
 	if err != nil {
 		return -1
 	}
@@ -126,7 +126,7 @@ func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, erro
 
 // GetNextEventOrDefault : Gets the next occuring event or nil
 func (d *EventDao) GetNextEventOrDefault(guildID string) (*domain.Event, error) {
-	// unixNowEst := time.Now().Unix() - util.EstLocOffset
+	// unixNowEst := time.Now().Unix() - util.ServerLocOffset
 	query := "select * from Events where ServerID = ? order by StartTimestamp desc"
 	// query := "select * from Events where ServerID = ? and StartTimestamp < ? order by StartTimestamp desc"
 
@@ -327,7 +327,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session) *domai
 	statement, _ := db.Prepare(query)
 	statementResult := executeQueryWithParams(statement, db,
 		event.ServerID, event.CreatorID, event.EventName, event.EventLocation, event.HostName,
-		event.CreationTimestamp-util.EstLocOffset, event.StartTimestamp-util.EstLocOffset, -1, event.DurationMinutes)
+		event.CreationTimestamp-util.ServerLocOffset, event.StartTimestamp-util.ServerLocOffset, -1, event.DurationMinutes)
 
 	if rowsAffected, _ := statementResult.RowsAffected(); rowsAffected < 0 {
 		log.Error("Error inserting server")
@@ -387,11 +387,11 @@ func mapORMFields(event *domain.Event, s *discordgo.Session) (*domain.Event, err
 	}
 	event.Creator = creator
 
-	event.CreationTime = time.Unix(event.CreationTimestamp, 0).In(util.EstLoc)
-	event.StartTime = time.Unix(event.StartTimestamp, 0).In(util.EstLoc)
+	event.CreationTime = time.Unix(event.CreationTimestamp, 0).In(util.ServerLoc)
+	event.StartTime = time.Unix(event.StartTimestamp, 0).In(util.ServerLoc)
 	event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
-	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.EstLoc)
-	event.TzOffset = util.EstLocOffset
-	event.TzLoc = util.EstLoc
+	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.ServerLoc)
+	event.TzOffset = util.ServerLocOffset
+	event.TzLoc = util.ServerLoc
 	return event, err
 }

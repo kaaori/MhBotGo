@@ -76,7 +76,7 @@ func (d *DiscordServerDao) InsertNewServer(serverID string) int64 {
 	defer db.Close()
 
 	statement, _ := db.Prepare(query)
-	statementResult := executeQueryWithParams(statement, db, serverID, time.Now().Unix()-util.EstLocOffset)
+	statementResult := executeQueryWithParams(statement, db, serverID, time.Now().Unix()-util.ServerLocOffset)
 
 	if rowsAffected, _ := statementResult.RowsAffected(); rowsAffected < 0 {
 		log.Error("Error inserting server")

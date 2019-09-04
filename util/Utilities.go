@@ -35,7 +35,7 @@ func nextMessageCreate(s *discordgo.Session) chan *discordgo.MessageCreate {
 }
 
 func randRange(min, max int) int {
-	rand.Seed(time.Now().Unix() - EstLocOffset)
+	rand.Seed(time.Now().Unix() - ServerLocOffset)
 	if max == 0 {
 		return 0
 	}
