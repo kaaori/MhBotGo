@@ -48,7 +48,7 @@ func TakeScreenshot() {
 func elementScreenshot(urlstr, sel string, res *[]byte) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			width, height := int64(950), int64(1080)
+			width, height := int64(880), int64(1080)
 			err := emulation.SetDeviceMetricsOverride(width, height, 1, false).
 				WithScreenOrientation(&emulation.ScreenOrientation{
 					Type:  emulation.OrientationTypeLandscapePrimary,
