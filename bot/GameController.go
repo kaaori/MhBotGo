@@ -22,9 +22,8 @@ func (inst *Instance) SetBotGame(s *discordgo.Session, game string) {
 }
 
 // CycleEventStatsAsStatus : Cycle through global stats info once
-func CycleEventStatsAsStatus(s *discordgo.Session, inst *Instance) {
-
-	for i := 1; i < 3; i++ {
+func CycleEventStatsAsStatus(inst *Instance) {
+	for i := 0; i < 3; i++ {
 		defer func() {
 			if err := recover(); err != nil {
 				// if we're in here, we had a panic and have caught it
@@ -32,27 +31,28 @@ func CycleEventStatsAsStatus(s *discordgo.Session, inst *Instance) {
 			}
 		}()
 
-		// If the event is over
+		// If the event is over or still running
 		if EventRunning {
 			break
 		}
 
 		switch i % 3 {
 		case 0:
-			inst.SetBotGame(s, strconv.Itoa(inst.EventDao.GetAllEventCounts())+" events served so far!")
+			inst.SetBotGame(inst.ClientSession, strconv.Itoa(inst.EventDao.GetAllEventCounts())+" events served so far!")
 			break
 		case 1:
-			inst.SetBotGame(s, strconv.Itoa(inst.EventDao.GetEventsCountForWeek(util.GetCurrentWeekFromMondayAsTime()))+" events this week!")
+			inst.SetBotGame(inst.ClientSession, strconv.Itoa(inst.EventDao.GetEventsCountForWeek(util.GetCurrentWeekFromMondayAsTime()))+" events this week!")
 			break
 		case 2:
-			inst.SetBotGame(s, "<3 you all~")
+			inst.SetBotGame(inst.ClientSession, "<3 you all~")
 			break
 		}
+		time.Sleep(6 * time.Second)
 	}
 }
 
 // CycleEventParamsAsStatus : Cycle through the paramters of the passed event until the event has passed
-func CycleEventParamsAsStatus(s *discordgo.Session, evt *domain.Event, inst *Instance) {
+func CycleEventParamsAsStatus(evt *domain.Event, inst *Instance) {
 	i := 0
 
 	for range time.NewTicker(4 * time.Second).C {
@@ -65,18 +65,18 @@ func CycleEventParamsAsStatus(s *discordgo.Session, evt *domain.Event, inst *Ins
 		}()
 
 		// If the event is over
-		if time.Now().After(evt.EndTime) {
+		if time.Since(evt.StartTime).Minutes() >= 30 {
 			EventRunning = false
-			inst.SetBotGame(s, "<3 event has ended~")
+			inst.SetBotGame(inst.ClientSession, "<3 event has ended~")
 			break
 		}
 
 		switch i % 2 {
 		case 0:
-			inst.SetBotGame(s, evt.EventName)
+			inst.SetBotGame(inst.ClientSession, evt.EventName)
 			break
 		case 1:
-			inst.SetBotGame(s, evt.EventLocation+" with "+evt.HostName)
+			inst.SetBotGame(inst.ClientSession, evt.EventLocation+" with "+evt.HostName)
 			break
 		}
 		i++

@@ -49,7 +49,8 @@ func InstallCommands(instance *bot.Instance) {
 
 	router.On("testgamestatus", func(ctx *exrouter.Context) {
 		evt, _ := BotInstance.EventDao.GetNextEventOrDefault(ctx.Msg.GuildID)
-		bot.CycleEventParamsAsStatus(ctx.Ses, evt, BotInstance)
+		go bot.CycleEventParamsAsStatus(evt, BotInstance)
+		ctx.Reply("Okay~")
 	})
 
 	router.On("factref", func(ctx *exrouter.Context) {

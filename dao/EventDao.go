@@ -48,7 +48,7 @@ func getEventFromStmt(stmt *sqlite3.Stmt, d *EventDao) (*domain.Event, error) {
 func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time.Time) int {
 	query := "select Count(*) cnt from Events where ServerID = ? and StartTimestamp between ? AND ?"
 	// -2*3600 for 2 hr buffer between midnight & an events start
-	stmt, err := queryForRows(query, DB, serverID, weekTime.Unix()-util.ServerLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.ServerLocOffset+(2*3600))
+	stmt, err := queryForRows(query, DB, serverID, weekTime.Unix()+util.ServerLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()+util.ServerLocOffset+(2*3600))
 	if err != nil {
 		return -1
 	}
@@ -59,9 +59,9 @@ func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time
 
 // GetEventsCountForWeek : Gets the # of all events within a week range
 func (d *EventDao) GetEventsCountForWeek(weekTime time.Time) int {
-	query := "select Count(*) from Events where StartTimestamp between ? AND ?"
+	query := "select Count(*) from Events ORDER by (julianday(DATETIME('NOW')) - julianday(StartTimestamp)) desc LIMIT 1;"
 	// -2*3600 for 2 hr buffer between midnight & an events start
-	stmt, err := queryForRows(query, DB, weekTime.Unix()-util.ServerLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()-util.ServerLocOffset+(2*3600))
+	stmt, err := queryForRows(query, DB)
 	if err != nil {
 		return -1
 	}
@@ -109,21 +109,15 @@ func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, erro
 
 // GetNextEventOrDefault : Gets the next occuring event or nil
 func (d *EventDao) GetNextEventOrDefault(guildID string) (*domain.Event, error) {
-	unixNowInLoc := time.Now().Unix() - util.ServerLocOffset
-	query := "select * from Events where ServerID = ? order by abs(? - StartTimestamp) limit 1"
+	// unixNowInLoc := time.Now().Unix() - util.ServerLocOffset
+	query := "select * from Events where ServerID = ? ORDER by abs(StartTimestamp- strftime('%s', 'now') ) limit 1"
 	// query := "select * from Events where ServerID = ? and StartTimestamp < ? order by StartTimestamp desc"
 
-	statement, err := DB.Prepare(query)
-	if err != nil {
-		log.Error("Error retrieving next event", err)
-		return nil, err
-	}
-	defer statement.Close()
-
-	stmt, err := queryForRows(query, DB, guildID, unixNowInLoc)
+	stmt, err := queryForRows(query, DB, guildID)
 	if err != nil {
 		return nil, err
 	}
+	defer stmt.Close()
 
 	return processStmtForEvent(stmt, d)
 }

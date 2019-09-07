@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"github.com/jasonlvhit/gocron"
 	"github.com/kaaori/MhBotGo/bot"
 	"github.com/kaaori/MhBotGo/commands"
@@ -40,7 +38,9 @@ func Init(inst *bot.Instance) {
 				fmt.Printf("Panic deferred in scheduler: %s\n", err)
 			}
 		}()
-		if i%6 == 0 {
+		// Every other tick cycle event stats
+		if i%2 == 0 {
+			go bot.CycleEventStatsAsStatus(inst)
 
 		}
 		checkEvents(t, inst)
@@ -114,10 +114,9 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 				bot.EventRunning = true
 				announcement = "**___" + evt.EventName + "___**" + " **has started!**"
 				body = evt.ToStartingString()
-				go inst.SetBotGame(inst.ClientSession, "Party Time!")
 				commands.ParseTemplate(g.ID)
-				commands.SendSchedule(schedChannel.ID, inst)
-				go baitAndSwitchGame(inst)
+				go commands.SendSchedule(schedChannel.ID, inst)
+				go bot.CycleEventParamsAsStatus(evt, inst)
 			} else {
 				continue
 			}
@@ -128,11 +127,4 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			log.Trace("Updated event " + evt.EventName)
 		}
 	}
-}
-
-// Wait an hour then change game back
-func baitAndSwitchGame(inst *bot.Instance) {
-	time.Sleep(1 * time.Hour)
-	inst.SetBotGame(inst.ClientSession, viper.GetString("game"))
-	bot.EventRunning = false
 }
