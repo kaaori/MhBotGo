@@ -1,10 +1,8 @@
 package commands
 
 import (
-	"encoding/json"
 	"errors"
 	"math"
-	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -16,10 +14,12 @@ import (
 	"github.com/Necroforger/dgrouter/exrouter"
 	"github.com/araddon/dateparse"
 	"github.com/bwmarrin/discordgo"
+	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/kaaori/MhBotGo/bot"
 	"github.com/kaaori/MhBotGo/chrome"
 	"github.com/kaaori/MhBotGo/domain"
 	"github.com/kaaori/MhBotGo/util"
+	"github.com/mmcdole/gofeed"
 	"github.com/snabb/isoweek"
 )
 
@@ -120,6 +120,7 @@ func ParseTemplate(guildID string) {
 		FridayEvents:      sortEventList(friEvts),
 		SaturdayEvents:    sortEventList(satEvts),
 		SundayEvents:      sortEventList(sunEvts),
+		FactTitle:         BotInstance.CurrentFactTitle,
 		Fact:              BotInstance.CurrentFact}
 
 	tmpl.Execute(f, data)
@@ -342,11 +343,31 @@ func findRoleByID(ctx *exrouter.Context, roleID string) (*discordgo.Role, error)
 }
 
 // GetNewFact : Sets the in-memory fact
-func GetNewFact() string {
+func GetNewFact() (string, string) {
+	log.Info("Updating fact...")
+
+	//build request
+	fp := gofeed.NewParser()
+	feed, _ := fp.ParseURL("https://unbelievablefactsblog.com/rss#_=_")
+
+	if len(feed.Items) <= 0 {
+		//error shit
+		return "error title", "error body"
+	}
+	curItem := feed.Items[0]
+	title := curItem.Title
+	content := strip.StripTags(curItem.Description)
+
+	return title, content
+}
+
+/*func GetNewFact() string {
 	log.Info("Updating fact")
 
 	// Build the request
-	req, err := http.NewRequest("GET", "https://uselessfacts.jsph.pl/random.json?language=en", nil)
+	fp := gofeed.NewParser()
+	req, err := fp.ParseURL("https://didyouknowblog.com/rss")
+	//req, err := http.NewRequest("GET", "https://uselessfacts.jsph.pl/random.json?language=en", nil)
 	if err != nil {
 		log.Error("NewRequest: ", err)
 		return "Error retrieving facts... Sorry ;-;"
@@ -366,7 +387,7 @@ func GetNewFact() string {
 		log.Error("Error decoding fact: ", err)
 	}
 	return fact.Text
-}
+}*/
 func findRoleByName(ctx *exrouter.Context, roleName string) (*discordgo.Role, error) {
 	var foundRole *discordgo.Role
 	guildRoles, _ := ctx.Ses.GuildRoles(ctx.Msg.GuildID)

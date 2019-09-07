@@ -91,7 +91,7 @@ func main() {
 	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 	BotInstance.AnnouncementChannel = config.GetString("announcements")
 	BotInstance.ScheduleChannel = config.GetString("schedule")
-	BotInstance.CurrentFact = commands.GetNewFact()
+	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact()
 
 	go scheduler.Init(BotInstance)
 

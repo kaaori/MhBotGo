@@ -5,6 +5,7 @@ type ScheduleView struct {
 	ServerName        string
 	CurrentWeekString string
 	Tz                string
+	FactTitle         string
 	Fact              string
 	MondayEvents      []*EventView
 	TuesdayEvents     []*EventView

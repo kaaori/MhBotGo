@@ -15,6 +15,7 @@ type Instance struct {
 	ScheduleChannel     string
 	HasClearedSchedule  bool
 	EventRunnerRoleName string
+	CurrentFactTitle    string
 	CurrentFact         string
 }
 

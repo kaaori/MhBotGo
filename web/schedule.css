@@ -120,8 +120,10 @@ h3 {
   position: absolute;
   top: 1px;
   left: 10px;
-  color: #ad48ff;
-  text-shadow: -1px 0 black, 0 2px black, 2px 0 black, 0 -1px black;
+  color: #f1e1ff;
+  text-shadow: -2px 0 black, 0 4px black, 4px 0 black, 0 -2px black;
+  
+
 }
 
 h4 {
@@ -129,7 +131,7 @@ h4 {
   position: absolute;
   top: 35px;
   left: 30px;
-  color: #bd85fa;
+  color: #f5ebff;
   text-shadow: -1px 0 black, 0 2px black, 2px 0 black, 0 -1px black;
 }
 
@@ -157,4 +159,11 @@ h6 {
 
 #facts p {
   padding-left: 15px;
+}
+
+#facts p.factTitle {
+  font-family: "Quicksand", sans-serif;
+  text-decoration: underline;
+  font-size: 24px;
+  text-align: center;
 }

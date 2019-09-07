@@ -68,7 +68,7 @@ func ClearSchedules(inst *bot.Instance) {
 }
 
 func UpdateFact(inst *bot.Instance) {
-	inst.CurrentFact = commands.GetNewFact()
+	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact()
 }
 
 // Runs every 10 seconds

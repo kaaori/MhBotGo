@@ -53,7 +53,7 @@ func InstallCommands(instance *bot.Instance) {
 	})
 
 	router.On("factref", func(ctx *exrouter.Context) {
-		BotInstance.CurrentFact = GetNewFact()
+		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
 	})
 
 	router.On("testss", func(ctx *exrouter.Context) {
