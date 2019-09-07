@@ -33,7 +33,7 @@ type Event struct {
 // ToString : Provides a pretty-print string for the event
 func (e *Event) ToString() string {
 	return "<em>" + e.StartTime.In(e.TzLoc).Format(time.Kitchen) +
-		" (Eastern Standard Time)</em> ── <strong>" + e.EventName +
+		"</em> ── <strong>" + e.EventName +
 		"</strong> ── (Hosted  by <strong><em>" + e.HostName + "</em></strong> in " + e.EventLocation + ")"
 }
 

@@ -8,8 +8,8 @@
     <title>Schedule test</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" type="text/css" href="schedule.css"/>
-    <link href="https://fonts.googleapis.com/css?family=Inconsolata|Pacifico|Quicksand&display=swap" rel="stylesheet"> 
+    <link rel="stylesheet" type="text/css" href="schedule.css" />
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata|Pacifico|Quicksand&display=swap" rel="stylesheet">
 
 </head>
 
@@ -36,96 +36,95 @@
         </div>
         <hr />
         <div id="schedule">
-        <ul>
-            <li>Monday</li>
             <ul>
-                {{range .MondayEvents}}
-                {{if .HasPassed}}
-                <!--Strike thru style here-->
-                <li class="past-event">{{.PrettyPrint}}</li>
-                {{else}}
-                <li>{{.PrettyPrint}}</li>
-                {{end}}
-                {{end}}
-            </ul>
-            <li>Tuesday</li>
-            <ul>
-                {{range .TuesdayEvents}}
-                {{if .HasPassed}}
-                <!--Strike thru style here-->
-                <li class="past-event">{{.PrettyPrint}}</li>
-                {{else}}
-                <li>{{.PrettyPrint}}</li>
+                <li>Monday</li>
+                <ul>
+                    {{range .MondayEvents}}
+                    {{if .HasPassed}}
+                    <!--Strike thru style here-->
+                    <li class="past-event">{{.PrettyPrint}}</li>
+                    {{else}}
+                    <li>{{.PrettyPrint}}</li>
+                    {{end}}
+                    {{end}}
+                </ul>
+                <li>Tuesday</li>
+                <ul>
+                    {{range .TuesdayEvents}}
+                    {{if .HasPassed}}
+                    <!--Strike thru style here-->
+                    <li class="past-event">{{.PrettyPrint}}</li>
+                    {{else}}
+                    <li>{{.PrettyPrint}}</li>
 
-                {{end}}
-                {{end}}
-            </ul>
-            <li>Wednesday</li>
-            <ul>
-                {{range .WednesdayEvents}}
-                {{if .HasPassed}}
-                <!--Strike thru style here-->
-                <li class="past-event">{{.PrettyPrint}}</li>
-                {{else}}
-                <li>{{.PrettyPrint}}</li>
+                    {{end}}
+                    {{end}}
+                </ul>
+                <li>Wednesday</li>
+                <ul>
+                    {{range .WednesdayEvents}}
+                    {{if .HasPassed}}
+                    <!--Strike thru style here-->
+                    <li class="past-event">{{.PrettyPrint}}</li>
+                    {{else}}
+                    <li>{{.PrettyPrint}}</li>
 
-                {{end}}
-                {{end}}
-            </ul>
-            <li>Thursday</li>
-            <ul>
-                {{range .ThursdayEvents}}
-                {{if .HasPassed}}
-                <!--Strike thru style here-->
-                <li class="past-event">{{.PrettyPrint}}</li>
-                {{else}}
-                <li>{{.PrettyPrint}}</li>
+                    {{end}}
+                    {{end}}
+                </ul>
+                <li>Thursday</li>
+                <ul>
+                    {{range .ThursdayEvents}}
+                    {{if .HasPassed}}
+                    <!--Strike thru style here-->
+                    <li class="past-event">{{.PrettyPrint}}</li>
+                    {{else}}
+                    <li>{{.PrettyPrint}}</li>
 
-                {{end}}
-                {{end}}
-            </ul>
-            <li>Friday</li>
-            <ul>
-                {{range .FridayEvents}}
-                {{if .HasPassed}}
-                <!--Strike thru style here-->
-                <li class="past-event">{{.PrettyPrint}}</li>
-                {{else}}
-                <li>{{.PrettyPrint}}</li>
+                    {{end}}
+                    {{end}}
+                </ul>
+                <li>Friday</li>
+                <ul>
+                    {{range .FridayEvents}}
+                    {{if .HasPassed}}
+                    <!--Strike thru style here-->
+                    <li class="past-event">{{.PrettyPrint}}</li>
+                    {{else}}
+                    <li>{{.PrettyPrint}}</li>
 
-                {{end}}
-                {{end}}
-            </ul>
-            <li>Saturday</li>
-            <ul>
-                {{range .SaturdayEvents}}
-                {{if .HasPassed}}
-                <!--Strike thru style here-->
-                <li class="past-event">{{.PrettyPrint}}</li>
-                {{else}}
-                <li>{{.PrettyPrint}}</li>
+                    {{end}}
+                    {{end}}
+                </ul>
+                <li>Saturday</li>
+                <ul>
+                    {{range .SaturdayEvents}}
+                    {{if .HasPassed}}
+                    <!--Strike thru style here-->
+                    <li class="past-event">{{.PrettyPrint}}</li>
+                    {{else}}
+                    <li>{{.PrettyPrint}}</li>
 
-                {{end}}
-                {{end}}
-            </ul>
-            <li>Sunday</li>
-            <ul>
-                {{range .SundayEvents}}
-                {{if .HasPassed}}
-                <!--Strike thru style here-->
-                <li class="past-event">{{.PrettyPrint}}</li>
-                {{else}}
-                <li>{{.PrettyPrint}}</li>
+                    {{end}}
+                    {{end}}
+                </ul>
+                <li>Sunday</li>
+                <ul>
+                    {{range .SundayEvents}}
+                    {{if .HasPassed}}
+                    <!--Strike thru style here-->
+                    <li class="past-event">{{.PrettyPrint}}</li>
+                    {{else}}
+                    <li>{{.PrettyPrint}}</li>
 
-                {{end}}
-                {{end}}
+                    {{end}}
+                    {{end}}
+                </ul>
             </ul>
-        </ul>
         </div>
         <div id="facts">
             <h5>Fact of the Day:</h5>
-            <p>placeholder text, lorem ipsum, fuck off ya cunt</p>
-
+            <p>{{.Fact}}</p>
         </div>
     </div>
 

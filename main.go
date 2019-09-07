@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"syscall"
 
+	"github.com/kaaori/MhBotGo/dao"
 	"github.com/kaaori/MhBotGo/scheduler"
 
 	"github.com/fsnotify/fsnotify"
@@ -74,9 +75,14 @@ func main() {
 	log.Info("======================/ MH Bot Starting \\======================")
 	log.Info("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
 
+	log.Info("Db opened...")
 	if _, err := os.Stat(config.GetString("dbLocation")); err != nil {
+		dao.OpenDB()
+
 		log.Error("DB Not found. Creating in " + config.GetString("dbLocation"))
 		bot.ReadDML(config.GetString("dbLocation"))
+	} else {
+		dao.OpenDB()
 	}
 
 	BotInstance = bot.InitBot(Token, config.GetString("dbLocation"))
@@ -85,6 +91,7 @@ func main() {
 	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 	BotInstance.AnnouncementChannel = config.GetString("announcements")
 	BotInstance.ScheduleChannel = config.GetString("schedule")
+	BotInstance.CurrentFact = commands.GetNewFact()
 
 	go scheduler.Init(BotInstance)
 

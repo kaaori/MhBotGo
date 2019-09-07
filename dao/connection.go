@@ -1,21 +1,27 @@
 package dao
 
 import (
-	"database/sql"
 
 	// TODO
+	"time"
+
+	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	logging "github.com/kaaori/mhbotgo/log"
 )
 
 var (
 	log = logging.NewLog()
+	DB  *sqlite3.Conn
 )
 
-func get() *sql.DB {
-	db, err := sql.Open("sqlite3", "./data/MHBot.db")
+func OpenDB() {
+	db, err := sqlite3.Open("./data/MHBot.db")
+	// db.SetMaxOpenConns(1)
+	// db.SetConnMaxLifetime(0)
 	if err != nil {
 		log.Error("Error Getting DB connection", err)
-		return nil
+		panic("Error connecting to sqlite")
 	}
-	return db
+	db.BusyTimeout(5 * time.Second)
+	DB = db
 }

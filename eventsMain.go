@@ -3,13 +3,12 @@ package main
 
 import (
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/MhBotGo/util"
 	"github.com/spf13/viper"
 )
 
 func readyEvent(s *discordgo.Session, ready *discordgo.Ready) {
 	log.Trace("received ready event")
-	util.SetBotGame(s, viper.GetString("game"), nil)
+	BotInstance.SetBotGame(s, viper.GetString("game"))
 }
 
 func guildJoinEvent(s *discordgo.Session, guild *discordgo.GuildCreate) {
@@ -18,5 +17,7 @@ func guildJoinEvent(s *discordgo.Session, guild *discordgo.GuildCreate) {
 	} else if server == nil {
 		log.Info("New guild detected, initialising database for " + guild.Name)
 		initDbForGuild(guild)
+	} else if server != nil && server.Guild != nil {
+		log.Info("Guild found: " + server.Guild.Name + ", love you<3")
 	}
 }

@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/Necroforger/dgrouter/exrouter"
@@ -19,6 +20,9 @@ var (
 	log       = logging.NewLog()
 	session   *discordgo.Session
 	authRoles []string
+
+	defaultScreenshotW = int64(880)
+	defaultScreenshotH = int64(1000)
 
 	// BotInstance : The instance of the bot containing the discord session and all relevant DAOs
 	BotInstance *bot.Instance
@@ -45,13 +49,50 @@ func InstallCommands(instance *bot.Instance) {
 
 	router.On("testgamestatus", func(ctx *exrouter.Context) {
 		evt, _ := BotInstance.EventDao.GetNextEventOrDefault(ctx.Msg.GuildID)
-		util.SetBotGame(ctx.Ses, "Party Time!", evt)
+		bot.CycleEventParamsAsStatus(ctx.Ses, evt, BotInstance)
+	})
+
+	router.On("factref", func(ctx *exrouter.Context) {
+		BotInstance.CurrentFact = GetNewFact()
+	})
+
+	router.On("testss", func(ctx *exrouter.Context) {
+		userW, _ := strconv.ParseInt(ctx.Args.Get(1), 10, 64)
+		userH, _ := strconv.ParseInt(ctx.Args.Get(2), 10, 64)
+		ctx.Reply("Okay! Sending a screenshot with Width: " + strconv.Itoa(int(userW)) + " and Height: " + strconv.Itoa(int(userH)) + "... Standby<3")
+		ParseTemplate(ctx.Msg.GuildID)
+
+		chrome.TakeScreenshot(userW, userH)
+		f, err := os.Open("schedule.png")
+		if err != nil {
+			log.Error("Error getting schedule image", err)
+			return
+		}
+		defer f.Close()
+
+		ms := &discordgo.MessageSend{
+			// Embed: &discordgo.MessageEmbed{
+			// 	Title: "Click the schedule below to see more info!",
+			// 	Color: 0x9400d3,
+			// 	Image: &discordgo.MessageEmbedImage{
+			// 		URL: "attachment://" + "schedule.png",
+			// 	},
+			// },
+			Files: []*discordgo.File{
+				&discordgo.File{
+					Name:   "schedule.png",
+					Reader: f,
+				},
+			},
+		}
+
+		BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
 	})
 
 	router.On("gctemplate", func(ctx *exrouter.Context) {
 		ParseTemplate(ctx.Msg.GuildID)
 
-		chrome.TakeScreenshot()
+		chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH)
 
 		f, err := os.Open("schedule.png")
 		if err != nil {
@@ -73,28 +114,41 @@ func InstallCommands(instance *bot.Instance) {
 	}).Desc("Descriptive text")
 
 	router.Group(func(r *exrouter.Route) {
-
-		r.Use(Auth)
-
+		r.Cat("events")
 		r.On("events", nil).
-			On("add", Auth(func(ctx *exrouter.Context) {
-				if addEvent(ctx) {
-					parseAndSendSched(ctx)
+			On("add", func(ctx *exrouter.Context) {
+				if !AuthEventRunner(ctx) {
+					return
 				}
-			}))
+				if addEvent(ctx) {
+					go parseAndSendSched(ctx)
+				}
+			})
 		r.On("events", nil).
 			On("remove", func(ctx *exrouter.Context) {
+				if !AuthEventRunner(ctx) {
+					return
+				}
 				if removeEvent(ctx) {
-					parseAndSendSched(ctx)
+					go parseAndSendSched(ctx)
 				}
 			})
 		r.On("events", nil).
 			On("stats", func(ctx *exrouter.Context) {
 				postEventStats(ctx)
-			}).Alias("next", "last")
+			})
+		r.On("events", nil).On("refresh", func(ctx *exrouter.Context) {
+			if !AuthEventRunner(ctx) {
+				return
+			}
+			go parseAndSendSched(ctx)
+		})
 	})
 
 	router.On("servertime", func(ctx *exrouter.Context) {
+		if !AuthEventRunner(ctx) {
+			return
+		}
 		fmt.Println(time.Now().Location())
 		ctx.Reply("According to my watch, it is " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006") + " <3")
 	})

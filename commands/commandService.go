@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"encoding/json"
+	"errors"
 	"math"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -19,6 +22,30 @@ import (
 	"github.com/kaaori/MhBotGo/util"
 	"github.com/snabb/isoweek"
 )
+
+// MemberHasPermission : Checks if the member has a given perm
+func MemberHasPermission(s *discordgo.Session, guildID string, userID string, permission int) bool {
+	member, err := s.State.Member(guildID, userID)
+	if err != nil {
+		if member, err = s.GuildMember(guildID, userID); err != nil {
+			return false
+		}
+	}
+
+	// Iterate through the role IDs stored in member.Roles
+	// to check permissions
+	for _, roleID := range member.Roles {
+		role, err := s.State.Role(guildID, roleID)
+		if err != nil {
+			return false
+		}
+		if role.Permissions&permission != 0 || role.Name == "BotAdmin" {
+			return true
+		}
+	}
+
+	return false
+}
 
 // ParseTemplate : Parses a given guild's events
 // Returns true if the schedule needs a refresh
@@ -92,7 +119,8 @@ func ParseTemplate(guildID string) {
 		ThursdayEvents:    sortEventList(thursEvts),
 		FridayEvents:      sortEventList(friEvts),
 		SaturdayEvents:    sortEventList(satEvts),
-		SundayEvents:      sortEventList(sunEvts)}
+		SundayEvents:      sortEventList(sunEvts),
+		Fact:              BotInstance.CurrentFact}
 
 	tmpl.Execute(f, data)
 }
@@ -108,13 +136,16 @@ func appendEventToList(targetList []*domain.EventView, e *domain.Event) []*domai
 	return append(targetList, &domain.EventView{
 		PrettyPrint:    e.ToString(),
 		StartTimestamp: e.StartTimestamp,
-		HasPassed:      time.Now().In(util.ServerLoc).After(e.StartTime),
+		HasPassed:      time.Now().In(util.ServerLoc).After(e.StartTime.In(util.ServerLoc)),
 		DayOfWeek:      e.StartTime.Weekday().String()})
 }
 
 func parseAndSendSched(ctx *exrouter.Context) {
 	ParseTemplate(ctx.Msg.GuildID)
-	g, _ := ctx.Guild(ctx.Msg.GuildID)
+	g, err := ctx.Guild(ctx.Msg.GuildID)
+	if err != nil {
+		panic("Couldn't find guild")
+	}
 	channel := FindSchedChannel(g, BotInstance)
 
 	SendSchedule(channel.ID, BotInstance)
@@ -135,23 +166,21 @@ func postEventStats(ctx *exrouter.Context) {
 		return
 	}
 
-	nextEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID)
-	nextEventStr := ""
+	nearestEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID)
+	nearestEventStr := ""
 	if err != nil {
 		log.Error("Error retrieving next event")
 		ctx.Reply("Error retrieving stats, please try again later.")
 		return
-	} else if nextEvent != nil {
-		if time.Now().Before(nextEvent.StartTime) {
-			nextEventStr = getMinutesTilNextString(nextEvent)
-
-		} else {
-			nextEventStr = getMinutesSinceLastString(nextEvent)
-		}
+	} else if nearestEvent != nil {
+		nearestEventStr = getMinutesOrHoursInRelationToClosestEvent(nearestEvent)
+	} else {
+		ctx.Reply("It looks like this server hasn't had any events yet!")
+		return
 	}
 	statField := util.GetField("Event stats for *"+guild.Name+"*",
 		"Events held in this server - **"+strconv.Itoa(count)+"** *("+strconv.Itoa(weekCount)+" this week)*"+
-			nextEventStr, false)
+			nearestEventStr, false)
 	emb := util.GetEmbed("", "", true, statField)
 	ms := &discordgo.MessageSend{
 		Embed: emb}
@@ -207,8 +236,6 @@ func removeEvent(ctx *exrouter.Context) bool {
 }
 
 func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
-	// TODO: Add descriptive examples to errors \/
-	// TODO: Validate el as date
 	t, isValid := validateDateString(ctx, strconv.FormatInt(event.StartTimestamp, 10))
 	if !isValid {
 		// The method call above handles outputting the error to the user and console.
@@ -243,7 +270,7 @@ func GetEmbedFromEvent(event *domain.Event, eventEmbedText string) *discordgo.Me
 	t := time.Unix(event.StartTimestamp, 0)
 	timeObj := t.In(util.ServerLoc).Format("January 2, 2006")
 	baseField := util.GetField("Event "+eventEmbedText+timeObj, event.ToEmbedString(), false)
-	baseEmbed := util.GetEmbed("", "Test footer", false, baseField)
+	baseEmbed := util.GetEmbed("", "", false, baseField)
 	return baseEmbed
 }
 
@@ -268,35 +295,91 @@ func validateDateString(ctx *exrouter.Context, dateString string) (time.Time, bo
 
 }
 
-// Auth : Authenticates against bot roles in config
-func Auth(fn exrouter.HandlerFunc) exrouter.HandlerFunc {
-	return func(ctx *exrouter.Context) {
-		member, err := ctx.Member(ctx.Msg.GuildID, ctx.Msg.Author.ID)
-		if err != nil {
-			ctx.Reply("Could not fetch member: ", err)
-		}
-		var botAdminRole *discordgo.Role
-		guildRoles, _ := ctx.Ses.GuildRoles(member.GuildID)
-		for _, r := range guildRoles {
-			if r.Name == BotInstance.EventRunnerRoleName {
-				botAdminRole = r
-				break
-			}
-		}
-		if botAdminRole == nil {
-			ctx.Reply("Oops, your server has not been configured properly!\n" +
-				"I can't find the role named `EventRunner`.")
-			return
-		}
+// AuthAdmin : Authenticates the user has admin perm
+func AuthAdmin(ctx *exrouter.Context) bool {
+	return MemberHasPermission(ctx.Ses, ctx.Msg.GuildID, ctx.Msg.Author.ID, 8)
+}
 
-		if sliceutil.Contains(member.Roles, botAdminRole.ID) {
-			ctx.Set("member", member)
-			fn(ctx)
-			return
-		}
-
-		ctx.Reply("You don't have permission to use this command")
+// AuthEventRunner : Authenticates against bot roles in config
+func AuthEventRunner(ctx *exrouter.Context) bool {
+	member, err := ctx.Member(ctx.Msg.GuildID, ctx.Msg.Author.ID)
+	if err != nil {
+		ctx.Reply("Could not fetch member: ", err)
+		return false
 	}
+	eventRunnerRole, err := findRoleByName(ctx, BotInstance.EventRunnerRoleName)
+	if err != nil {
+		log.Error("Error getting role", err)
+	}
+	if eventRunnerRole == nil {
+		ctx.Reply("Oops, your server has not been configured properly!\n" +
+			"I can't find the role named `EventRunner`.")
+		return false
+	}
+
+	if MemberHasPermission(ctx.Ses, ctx.Msg.GuildID, ctx.Msg.Author.ID, 0x8) ||
+		sliceutil.Contains(member.Roles, eventRunnerRole.ID) {
+		return true
+	}
+
+	ctx.Reply("You don't have permission to use this command")
+	return false
+}
+
+func findRoleByID(ctx *exrouter.Context, roleID string) (*discordgo.Role, error) {
+	var foundRole *discordgo.Role
+	guildRoles, _ := ctx.Ses.GuildRoles(ctx.Msg.GuildID)
+	for _, r := range guildRoles {
+		if r.ID == roleID {
+			foundRole = r
+			break
+		}
+	}
+	if foundRole != nil {
+		return foundRole, nil
+	}
+	return nil, errors.New("No role found")
+}
+
+// GetNewFact : Sets the in-memory fact
+func GetNewFact() string {
+	log.Info("Updating fact")
+
+	// Build the request
+	req, err := http.NewRequest("GET", "https://uselessfacts.jsph.pl/random.json?language=en", nil)
+	if err != nil {
+		log.Error("NewRequest: ", err)
+		return "Error retrieving facts... Sorry ;-;"
+	}
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error("Do: ", err)
+		return "Error retrieving facts... Sorry ;-;"
+	}
+	defer resp.Body.Close()
+
+	var fact domain.Fact
+
+	if err := json.NewDecoder(resp.Body).Decode(&fact); err != nil {
+		log.Error("Error decoding fact: ", err)
+	}
+	return fact.Text
+}
+func findRoleByName(ctx *exrouter.Context, roleName string) (*discordgo.Role, error) {
+	var foundRole *discordgo.Role
+	guildRoles, _ := ctx.Ses.GuildRoles(ctx.Msg.GuildID)
+	for _, r := range guildRoles {
+		if r.Name == roleName {
+			foundRole = r
+			break
+		}
+	}
+	if foundRole != nil {
+		return foundRole, nil
+	}
+	return nil, errors.New("No role found")
 }
 
 // FindSchedChannel : Finds the schedule channel for a given guild
@@ -332,8 +415,12 @@ func FindAnnouncementsChannel(guild *discordgo.Guild, inst *bot.Instance) *disco
 }
 
 // GetSchedMessage : Gets the current schedule image posted, if exists, else nil
-func GetSchedMessage(schedChannelID string, inst *bot.Instance) *discordgo.Message {
-	msgHistory, _ := inst.ClientSession.ChannelMessages(schedChannelID, 100, "", "", "")
+func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Message, error) {
+	msgHistory, err := inst.ClientSession.ChannelMessages(schedChannelID, 100, "", "", "")
+	if err != nil {
+		log.Error("Couldn't find sched message")
+		return nil, err
+	}
 
 	var schedMsg *discordgo.Message
 	for _, msg := range msgHistory {
@@ -344,17 +431,25 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) *discordgo.Messa
 			schedMsg = msg
 		}
 	}
-	return schedMsg
+	return schedMsg, nil
 }
 
 // SendSchedule : Parses and sends the schedule message to a given channel
 func SendSchedule(schedChannelID string, inst *bot.Instance) {
-	schedMsg := GetSchedMessage(schedChannelID, inst)
+	schedMsg, err := GetSchedMessage(schedChannelID, inst)
+	if err != nil {
+		return
+	}
 
 	if schedMsg != nil {
 		inst.ClientSession.ChannelMessageDelete(schedMsg.ChannelID, schedMsg.ID)
 	}
-	chrome.TakeScreenshot()
+
+	go takeAndSend(schedChannelID, inst)
+}
+
+func takeAndSend(schedChannelID string, inst *bot.Instance) {
+	chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH)
 
 	f, err := os.Open("schedule.png")
 	if err != nil {
@@ -364,6 +459,13 @@ func SendSchedule(schedChannelID string, inst *bot.Instance) {
 	defer f.Close()
 
 	ms := &discordgo.MessageSend{
+		// Embed: &discordgo.MessageEmbed{
+		// 	Title: "Click the schedule below to see more info!",
+		// 	Color: 0x9400d3,
+		// 	Image: &discordgo.MessageEmbedImage{
+		// 		URL: "attachment://" + "schedule.png",
+		// 	},
+		// },
 		Files: []*discordgo.File{
 			&discordgo.File{
 				Name:   "schedule.png",
@@ -372,43 +474,28 @@ func SendSchedule(schedChannelID string, inst *bot.Instance) {
 		},
 	}
 
-	inst.ClientSession.ChannelMessageSendComplex(schedChannelID, ms)
+	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, ms)
 }
 
-func getMinutesTilNextString(nextEvent *domain.Event) string {
-	minutesUntilNext := math.Round(time.Until(nextEvent.StartTime).Minutes())
-	minutesStr := ""
-	if minutesUntilNext > 60 {
-		hrs := math.Round(time.Until(nextEvent.StartTime).Hours())
-		hrsPlural := ""
-		if hrs <= 1 {
-			hrsPlural = " hour"
-		} else {
-			hrsPlural = " hours"
-		}
-		minutesStr = strconv.FormatFloat(hrs, 'f', -1, 64) + hrsPlural + " until next event!"
-	} else {
-		minutesStr = strconv.FormatFloat(minutesUntilNext, 'f', -1, 64) +
-			" minutes until the next event!"
+func getMinutesOrHoursInRelationToClosestEvent(nearestEvent *domain.Event) string {
+	minutesUntilNext := time.Until(nearestEvent.StartTime)
+	tilOrSinceStr := "until the next event!"
+	if tilOrSince := minutesUntilNext.Minutes(); tilOrSince < 0 {
+		tilOrSinceStr = "since the last event!"
 	}
-	return "\n" + minutesStr
-}
-
-func getMinutesSinceLastString(lastEvent *domain.Event) string {
-	minutesSinceLast := math.Round(time.Since(lastEvent.StartTime).Minutes())
 	minutesStr := ""
-	if minutesSinceLast > 60 {
-		hrs := math.Round(time.Since(lastEvent.StartTime).Hours())
+	if math.Abs(minutesUntilNext.Minutes()) >= 60 {
+		hrs := math.Abs(math.Round(minutesUntilNext.Hours()))
 		hrsPlural := ""
 		if hrs <= 1 {
-			hrsPlural = " hour"
+			hrsPlural = " hour "
 		} else {
-			hrsPlural = " hours"
+			hrsPlural = " hours "
 		}
-		minutesStr = strconv.FormatFloat(hrs, 'f', -1, 64) + hrsPlural + " since the last event!"
+		minutesStr = strconv.Itoa(int(math.Abs(hrs))) + hrsPlural + tilOrSinceStr
 	} else {
-		minutesStr = strconv.FormatFloat(minutesSinceLast, 'f', -1, 64) +
-			" minutes since the last event!"
+		minutesStr = strconv.Itoa(int(math.Abs(minutesUntilNext.Minutes()))) +
+			" minutes " + tilOrSinceStr
 	}
 	return "\n" + minutesStr
 }

@@ -2,6 +2,8 @@ package scheduler
 
 import (
 	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/spf13/viper"
@@ -26,6 +28,7 @@ func Init(inst *bot.Instance) {
 	log.Info("Scheduler tasks starting.")
 
 	gocron.Every(1).Monday().At("3:45").Do(ClearSchedules, inst)
+	gocron.Every(1).Day().At("00:01").Do(UpdateFact, inst)
 	gocron.Start()
 
 	var i int64
@@ -64,6 +67,10 @@ func ClearSchedules(inst *bot.Instance) {
 	}
 }
 
+func UpdateFact(inst *bot.Instance) {
+	inst.CurrentFact = commands.GetNewFact()
+}
+
 // Runs every 10 seconds
 func checkEvents(t time.Time, inst *bot.Instance) {
 	for _, g := range inst.ClientSession.State.Guilds {
@@ -73,12 +80,11 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			log.Error("Couldn't find schedule channel")
 			continue
 		}
-		schedMsg := commands.GetSchedMessage(schedChannel.ID, inst)
+		schedMsg, _ := commands.GetSchedMessage(schedChannel.ID, inst)
 		if schedMsg == nil {
 			commands.ParseTemplate(g.ID)
 			commands.SendSchedule(schedChannel.ID, inst)
 		}
-		// TODO Write GetAllEventsForServerForWeek(g.ID, t.Now().ISOWeek() or .Weekday()))
 		weekTime := util.GetCurrentWeekFromMondayAsTime()
 		evts, err := inst.EventDao.GetAllEventsForServerForWeek(g.ID, weekTime)
 		if err != nil {
@@ -101,13 +107,14 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			// Unannounced = -1
 			if timeTilEvt.Minutes() <= 20 &&
 				evt.LastAnnouncementTimestamp < 0 && timeSinceEvt < 0 {
-				announcement = "**___" + evt.EventName + "___**" + " in *20 minutes!*"
+				announcement = "**___" + evt.EventName + "___**" + " in *" + strconv.Itoa(int(math.Ceil(time.Until(evt.StartTime).Minutes()))) + " minutes!*"
 				body = evt.ToAnnounceString()
-			} else if timeSinceEvt.Seconds() >= 0 &&
-				evt.StartTime.After(evt.LastAnnouncementTime) && timeSinceEvt < 3600 {
+			} else if (timeSinceEvt.Nanoseconds() >= 0 || timeTilEvt < 0) &&
+				(evt.StartTime.After(evt.LastAnnouncementTime) || evt.LastAnnouncementTimestamp < 0) && timeSinceEvt.Hours() <= 2 {
+				bot.EventRunning = true
 				announcement = "**___" + evt.EventName + "___**" + " **has started!**"
 				body = evt.ToStartingString()
-				util.SetBotGame(inst.ClientSession, "Party Time!", evt)
+				go inst.SetBotGame(inst.ClientSession, "Party Time!")
 				commands.ParseTemplate(g.ID)
 				commands.SendSchedule(schedChannel.ID, inst)
 				go baitAndSwitchGame(inst)
@@ -118,6 +125,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			evt.LastAnnouncementTimestamp = time.Now().Unix()
 			inst.EventDao.UpdateEvent(evt)
 			inst.ClientSession.ChannelMessageSendEmbed(announcementChannel.ID, commands.GetAnnounceEmbedFromEvent(evt, body, announcement))
+			log.Trace("Updated event " + evt.EventName)
 		}
 	}
 }
@@ -125,5 +133,6 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 // Wait an hour then change game back
 func baitAndSwitchGame(inst *bot.Instance) {
 	time.Sleep(1 * time.Hour)
-	util.SetBotGame(inst.ClientSession, viper.GetString("game"), nil)
+	inst.SetBotGame(inst.ClientSession, viper.GetString("game"))
+	bot.EventRunning = false
 }

@@ -1,9 +1,10 @@
 package dao
 
 import (
-	"database/sql"
+	"errors"
 	"time"
 
+	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kaaori/MhBotGo/domain"
 	"github.com/kaaori/MhBotGo/util"
@@ -19,51 +20,44 @@ func (d *DiscordServerDao) GetServerByID(ID string) (*domain.DiscordServer, erro
 	query := "select * from Servers where ServerID = ?"
 	// server := new(domain.DiscordSer  ver)
 
-	db := get()
-	defer db.Close()
-
-	statement, _ := db.Prepare(query)
-
-	rows, err := queryForRowsWithParams(statement, db, ID)
+	stmt, err := queryForRows(query, DB, ID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer stmt.Close()
 
-	if !rows.Next() {
-		log.Error("No guild by id " + ID + " found")
-		return nil, err
-	}
-
-	server, err := mapRowToServer(*rows, d.Session)
+	server, err := getServerFromStmt(stmt, d)
 	if err != nil {
+		log.Error("Error getting server by ID", err)
 		return nil, err
 	}
-
-	return &server, err
+	return server, err
 }
 
 // GetAllServers : Gets all the servers in the database
-func (d *DiscordServerDao) GetAllServers() ([]domain.DiscordServer, error) {
+func (d *DiscordServerDao) GetAllServers() ([]*domain.DiscordServer, error) {
 	query := "select * from Servers"
-	servers := make([]domain.DiscordServer, 0)
+	servers := make([]*domain.DiscordServer, 0)
 
-	db := get()
-	defer db.Close()
-
-	rows, err := queryForRows(query, db)
+	stmt, err := queryForRows(query, DB)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer stmt.Close()
 
-	for rows.Next() {
-		server, err := mapRowToServer(*rows, d.Session)
+	for {
+		server, err := getServerFromStmt(stmt, d)
 		if err != nil {
+			log.Error("Error getting server by ID", err)
 			return nil, err
 		}
-
-		servers = append(servers, server)
+		if server != nil {
+			servers = append(servers, server)
+		} else if len(servers) > 0 {
+			break
+		} else {
+			return nil, errors.New("Couldn't find server")
+		}
 	}
 
 	return servers, err
@@ -72,21 +66,21 @@ func (d *DiscordServerDao) GetAllServers() ([]domain.DiscordServer, error) {
 // InsertNewServer : Sets up the initial data for a guild
 func (d *DiscordServerDao) InsertNewServer(serverID string) int64 {
 	query := "insert into Servers (ServerID, JoinTimeUnix) values (?,?)"
-	db := get()
-	defer db.Close()
-
-	statement, _ := db.Prepare(query)
-	statementResult := executeQueryWithParams(statement, db, serverID, time.Now().Unix()-util.ServerLocOffset)
-
-	if rowsAffected, _ := statementResult.RowsAffected(); rowsAffected < 0 {
-		log.Error("Error inserting server")
+	stmt, err := DB.Prepare(query)
+	if err != nil {
+		log.Error("Error inserting guild", err)
 		return -1
 	}
-	lastID, _ := statementResult.LastInsertId()
-	return lastID
+	defer stmt.Close()
+	err = stmt.Exec(serverID, time.Now().Unix()-util.ServerLocOffset)
+	if err != nil {
+		log.Error("Error inserting guild", err)
+		return -1
+	}
+	return DB.LastInsertRowID()
 }
 
-func mapRowToServer(rows sql.Rows, s *discordgo.Session) (domain.DiscordServer, error) {
+func mapRowToServer(rows *sqlite3.Stmt, s *discordgo.Session) (domain.DiscordServer, error) {
 	var server domain.DiscordServer
 	err := rows.Scan(&server.ServerID, &server.JoinTimeUnix)
 	if err != nil {
@@ -95,8 +89,25 @@ func mapRowToServer(rows sql.Rows, s *discordgo.Session) (domain.DiscordServer, 
 	// server.Guild = s.Guild(server.ServerID)
 	server.Guild, err = s.State.Guild(server.ServerID)
 	if err != nil {
+		log.Error("Error finding guild: ", err)
 		return server, err
 	}
 
 	return server, err
+}
+
+func getServerFromStmt(stmt *sqlite3.Stmt, d *DiscordServerDao) (*domain.DiscordServer, error) {
+	hasRow, err := stmt.Step()
+	if err != nil {
+		return nil, err
+	}
+
+	if !hasRow {
+		return nil, nil
+	}
+	server, err := mapRowToServer(stmt, d.Session)
+	if err != nil {
+		return nil, err
+	}
+	return &server, err
 }

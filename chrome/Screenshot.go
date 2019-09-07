@@ -23,7 +23,7 @@ func Init() (context.Context, context.CancelFunc) {
 }
 
 // TakeScreenshot : Takes a screenshot of the given url
-func TakeScreenshot() {
+func TakeScreenshot(w int64, h int64) {
 	ctx, cancel := Init()
 	defer cancel()
 
@@ -36,7 +36,7 @@ func TakeScreenshot() {
 	// 	log.Fatal(err)
 	// }
 	if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
-		"#main", &buf)); err != nil {
+		"#main", &buf, w, h)); err != nil {
 		log.Fatal(err)
 	}
 	if err := ioutil.WriteFile("schedule.png", buf, 0644); err != nil {
@@ -45,10 +45,10 @@ func TakeScreenshot() {
 }
 
 // elementScreenshot takes a screenshot of a specific element.
-func elementScreenshot(urlstr, sel string, res *[]byte) chromedp.Tasks {
+func elementScreenshot(urlstr, sel string, res *[]byte, w int64, h int64) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			width, height := int64(880), int64(1080)
+			width, height := int64(w), int64(h)
 			err := emulation.SetDeviceMetricsOverride(width, height, 1, false).
 				WithScreenOrientation(&emulation.ScreenOrientation{
 					Type:  emulation.OrientationTypeLandscapePrimary,

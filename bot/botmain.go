@@ -15,7 +15,7 @@ type Instance struct {
 	ScheduleChannel     string
 	HasClearedSchedule  bool
 	EventRunnerRoleName string
-	db                  *DB
+	CurrentFact         string
 }
 
 // InitBot : Initialise a bot instance
@@ -28,14 +28,7 @@ func InitBot(token string, dbLocation string) *Instance {
 		return nil
 	}
 
-	newDb, err := initDB(dbLocation, "sqlite3")
-	if err != nil {
-		log.Error("Error loading DB", err)
-		return nil
-	}
-
 	inst.ClientSession = discord
-	inst.db = newDb
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}
 	inst.EventDao = dao.EventDao{Session: inst.ClientSession}
 	inst.HasClearedSchedule = false

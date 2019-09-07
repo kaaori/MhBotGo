@@ -2,14 +2,15 @@ package bot
 
 import (
 	"io/ioutil"
+	"strconv"
 
+	"github.com/kaaori/MhBotGo/dao"
 	logging "github.com/kaaori/mhbotgo/log"
 
 	// TODO
-	"database/sql"
 
 	// TODO
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/bvinc/go-sqlite-lite/sqlite3"
 )
 
 var (
@@ -28,16 +29,16 @@ func ReadDML(dbLocation string) {
 }
 
 func installDML(dml string, dbLocation string) {
-	db, err := sql.Open("sqlite3", dbLocation)
-	isError(err)
-	defer db.Close()
+	if dao.DB != nil {
+		err := dao.DB.Exec(dml)
+		log.Info(strconv.Itoa(dao.DB.TotalChanges()) + " Changes")
+		isError(err)
 
-	// = used over := when assigning to "existing" vars only (err is assigned upon opening a connection)
-	// _ used to ignore the first return value of the Exec function, as we don't need it
-	_, err = db.Exec(dml)
-	isError(err)
+		log.Info("Tables created")
+	} else {
+		log.Error("DB Is null")
+	}
 
-	log.Info("Tables created")
 }
 
 func isError(err error) {
