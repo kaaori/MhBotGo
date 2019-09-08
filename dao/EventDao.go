@@ -15,6 +15,7 @@ type EventDao struct {
 	Session *discordgo.Session
 }
 
+// DeleteAllEventsForServer : Nukes everything for a server
 func (d *EventDao) DeleteAllEventsForServer(serverID string) error {
 	query := "delete from Events where ServerID = ?"
 
@@ -32,7 +33,7 @@ func (d *EventDao) DeleteAllEventsForServer(serverID string) error {
 func (d *EventDao) GetAllEventsForServerForWeek(serverID string, weekTime time.Time) ([]*domain.Event, error) {
 	query := "select * from Events where ServerID = ? and StartTimestamp between ? AND ?"
 
-	stmt, err := queryForRows(query, DB, serverID, weekTime.Unix()-util.ServerLocOffset, weekTime.AddDate(0, 0, 6).Unix()-util.ServerLocOffset+(2*3600))
+	stmt, err := queryForRows(query, DB, serverID, weekTime.Unix(), weekTime.AddDate(0, 0, 7).Unix())
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +84,7 @@ func (d *EventDao) GetEventsCountForWeek(weekTime time.Time) int {
 	return getCountFromStmt(stmt)
 }
 
+// GetAllEventCounts : Get a count of all events globally
 func (d *EventDao) GetAllEventCounts() int {
 	query := "select Count(*) from Events"
 
@@ -261,7 +263,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session) *domai
 	err = stmt.Exec(event.ServerID, event.CreatorID, event.EventName, event.EventLocation, event.HostName,
 		event.CreationTimestamp-util.ServerLocOffset, event.StartTimestamp-util.ServerLocOffset, -1, event.DurationMinutes)
 	if err != nil {
-		log.Error("Error inserting guild", err)
+		log.Error("Error inserting event", err)
 		return nil
 	}
 

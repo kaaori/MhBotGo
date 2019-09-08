@@ -7,11 +7,5 @@ type ScheduleView struct {
 	Tz                string
 	FactTitle         string
 	Fact              string
-	MondayEvents      []*EventView
-	TuesdayEvents     []*EventView
-	WednesdayEvents   []*EventView
-	ThursdayEvents    []*EventView
-	FridayEvents      []*EventView
-	SaturdayEvents    []*EventView
-	SundayEvents      []*EventView
+	Week              *WeekView
 }

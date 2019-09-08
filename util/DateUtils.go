@@ -15,6 +15,14 @@ var (
 	ServerLoc *time.Location
 )
 
+// GetCurrentDayForSchedule : Gets the class for setting the active day on the schedule
+func GetCurrentDayForSchedule(day time.Weekday) string {
+	if time.Now().Weekday() == day {
+		return "active"
+	}
+	return ""
+}
+
 func init() {
 	ServerLoc = time.Local
 	serverTz, locOffsetInt := time.Now().In(ServerLoc).Zone()
@@ -27,11 +35,6 @@ func GetCurrentWeekFromMondayAsTime() time.Time {
 	_, week := time.Now().ISOWeek()
 	return FirstDayOfISOWeek(time.Now().Year(), week, ServerLoc)
 }
-
-// func getEstOffset() int64 {
-// 	_, offset := time.Now().In(ServerLoc).Zone()
-// 	return int64(offset)
-// }
 
 // FirstDayOfISOWeek : Gets the time object for the first date in a given week (extracted from time.Now())
 func FirstDayOfISOWeek(year int, week int, timezone *time.Location) time.Time {

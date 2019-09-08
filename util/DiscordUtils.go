@@ -25,7 +25,7 @@ func GetEmbed(title string, footer string, withThumb bool, fields ...*discordgo.
 	}
 	return &discordgo.MessageEmbed{
 		// Author:      &discordgo.MessageEmbedAuthor{},
-		Color: MhColor, // Green
+		Color: MhColor,
 		// Description: "This is a discordgo embed",
 		Fields: fields,
 		Thumbnail: &discordgo.MessageEmbedThumbnail{

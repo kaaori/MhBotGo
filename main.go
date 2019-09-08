@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"syscall"
 
-	"github.com/kaaori/MhBotGo/dao"
 	"github.com/kaaori/MhBotGo/scheduler"
 
 	"github.com/fsnotify/fsnotify"
@@ -77,23 +76,17 @@ func main() {
 
 	log.Info("Db opened...")
 	if _, err := os.Stat(config.GetString("dbLocation")); err != nil {
-		dao.OpenDB()
-
 		log.Error("DB Not found. Creating in " + config.GetString("dbLocation"))
 		bot.ReadDML(config.GetString("dbLocation"))
-	} else {
-		dao.OpenDB()
 	}
 
 	BotInstance = bot.InitBot(Token, config.GetString("dbLocation"))
 	BotInstance.ClientSession.State.MaxMessageCount = 100
-	BotInstance.ClientSession.AddHandler(readyEvent)
-	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 	BotInstance.AnnouncementChannel = config.GetString("announcements")
 	BotInstance.ScheduleChannel = config.GetString("schedule")
 	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact()
-
-	go scheduler.Init(BotInstance)
+	BotInstance.ClientSession.AddHandler(readyEvent)
+	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 
 	commands.InstallCommands(BotInstance)
 
@@ -104,11 +97,11 @@ func main() {
 	}
 	// Defer the session cleanup until the application is closed
 	defer BotInstance.ClientSession.Close()
+	scheduler.Init(BotInstance)
 
 	// Wait here until CTRL-C or other term signal is received.
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
-
 }

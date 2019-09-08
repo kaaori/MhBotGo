@@ -11,10 +11,12 @@ import (
 
 var (
 	log = logging.NewLog()
-	DB  *sqlite3.Conn
+	// DB : The current DB session
+	DB *sqlite3.Conn
 )
 
-func OpenDB() {
+func init() {
+	log.Info("Initialising DB...")
 	db, err := sqlite3.Open("./data/MHBot.db")
 	// db.SetMaxOpenConns(1)
 	// db.SetConnMaxLifetime(0)

@@ -2,14 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/Necroforger/dgrouter/exrouter"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kaaori/MhBotGo/bot"
-	"github.com/kaaori/MhBotGo/chrome"
 	"github.com/kaaori/MhBotGo/util"
 	logging "github.com/kaaori/mhbotgo/log"
 	config "github.com/spf13/viper"
@@ -35,6 +33,19 @@ func refreshAuthRoles() {
 // InstallCommands : Installs the commands
 func InstallCommands(instance *bot.Instance) {
 
+	// TODO:
+	//		- Command to allow Midnight Crew/Specific Role to create a voice channel
+	//			- If the VC is empty for more than 5 minutes (no one joins or everyone leaves)
+	//				* the bot will destroy the VC
+	//
+	//			- Birthdays
+	//				- Users can assign or update their birthdate  	: !mh birthday set "mm/dd"
+	//				- Users can unassign their birthday 			: !mh birthday reset
+	//				- Bot will check for the week if a birthday is occurring in the set week
+	//					* Add special event for user's birthday to append to schedule
+	//
+	//
+
 	refreshAuthRoles()
 	BotInstance = instance
 	session = instance.ClientSession
@@ -47,84 +58,17 @@ func InstallCommands(instance *bot.Instance) {
 	// 	ctx.Reply("Reply text here!")
 	// }).Desc("Descriptive text")
 
-	router.On("testgamestatus", func(ctx *exrouter.Context) {
-		evt, _ := BotInstance.EventDao.GetNextEventOrDefault(ctx.Msg.GuildID)
-		go bot.CycleEventParamsAsStatus(evt, BotInstance)
-		ctx.Reply("Okay~")
-	})
-
-	router.On("factref", func(ctx *exrouter.Context) {
-		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
-	})
-
 	router.On("testss", func(ctx *exrouter.Context) {
-		userW, _ := strconv.ParseInt(ctx.Args.Get(1), 10, 64)
-		userH, _ := strconv.ParseInt(ctx.Args.Get(2), 10, 64)
-		ctx.Reply("Okay! Sending a screenshot with Width: " + strconv.Itoa(int(userW)) + " and Height: " + strconv.Itoa(int(userH)) + "... Standby<3")
+		h, _ := strconv.ParseInt(ctx.Args[1], 10, 32)
+		w, _ := strconv.ParseInt(ctx.Args[2], 10, 32)
+		ctx.Reply("Okay, sending a screenshot with size " + strconv.Itoa(int(h)) + "x" + strconv.Itoa(int(w)) + "... Standby<3")
 		ParseTemplate(ctx.Msg.GuildID)
-
-		chrome.TakeScreenshot(userW, userH)
-		f, err := os.Open("schedule.png")
-		if err != nil {
-			log.Error("Error getting schedule image", err)
-			return
-		}
-		defer f.Close()
-
-		ms := &discordgo.MessageSend{
-			// Embed: &discordgo.MessageEmbed{
-			// 	Title: "Click the schedule below to see more info!",
-			// 	Color: 0x9400d3,
-			// 	Image: &discordgo.MessageEmbedImage{
-			// 		URL: "attachment://" + "schedule.png",
-			// 	},
-			// },
-			Files: []*discordgo.File{
-				&discordgo.File{
-					Name:   "schedule.png",
-					Reader: f,
-				},
-			},
-		}
-
-		BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
+		go takeAndSend(ctx.Msg.ChannelID, BotInstance)
 	})
-
-	router.On("delevts", func(ctx *exrouter.Context) {
-		err := BotInstance.EventDao.DeleteAllEventsForServer(ctx.Msg.GuildID)
-		if err != nil {
-			ctx.Reply("There was an error deleting all events ;-;")
-			return
-		}
-		ctx.Reply("Ok! All events for this server have been cleared")
-	})
-
-	router.On("gctemplate", func(ctx *exrouter.Context) {
-		ParseTemplate(ctx.Msg.GuildID)
-
-		chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH)
-
-		f, err := os.Open("schedule.png")
-		if err != nil {
-			log.Error("Error getting schedule image", err)
-			return
-		}
-		defer f.Close()
-
-		ms := &discordgo.MessageSend{
-			Files: []*discordgo.File{
-				&discordgo.File{
-					Name:   "schedule.png",
-					Reader: f,
-				},
-			},
-		}
-
-		BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
-	}).Desc("Descriptive text")
 
 	router.Group(func(r *exrouter.Route) {
 		r.Cat("events")
+
 		r.On("events", nil).
 			On("add", func(ctx *exrouter.Context) {
 				if !AuthEventRunner(ctx) {
@@ -153,13 +97,23 @@ func InstallCommands(instance *bot.Instance) {
 			}
 			go parseAndSendSched(ctx)
 		})
+		r.On("events", nil).On("clear", func(ctx *exrouter.Context) {
+			if !AuthEventRunner(ctx) {
+				return
+			}
+			err := BotInstance.EventDao.DeleteAllEventsForServer(ctx.Msg.GuildID)
+			if err != nil {
+				ctx.Reply("There was an error deleting all events ;-;")
+				return
+			}
+			ctx.Reply("Ok! All events for this server have been cleared")
+		})
 	})
 
 	router.On("servertime", func(ctx *exrouter.Context) {
 		if !AuthEventRunner(ctx) {
 			return
 		}
-		fmt.Println(time.Now().Location())
 		ctx.Reply("According to my watch, it is " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006") + " <3")
 	})
 

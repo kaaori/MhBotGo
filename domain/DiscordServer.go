@@ -7,7 +7,7 @@ import (
 // DiscordServer : Model of a Discord Server
 type DiscordServer struct {
 	ServerID     string
-	JoinTimeUnix int32
+	JoinTimeUnix int64
 
 	// ORM Fields
 	Guild *discordgo.Guild

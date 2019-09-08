@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -113,15 +114,26 @@ func ParseTemplate(guildID string) {
 		ServerName:        g.Name,
 		CurrentWeekString: string(firstDayOfWeek.Format("January 2, 2006") + " ── " + firstDayOfWeek.AddDate(0, 0, 6).Format("January 2, 2006")),
 		Tz:                "<strong>Eastern Standard Time</strong>",
-		MondayEvents:      sortEventList(monEvts),
-		TuesdayEvents:     sortEventList(tuesEvts),
-		WednesdayEvents:   sortEventList(wedEvts),
-		ThursdayEvents:    sortEventList(thursEvts),
-		FridayEvents:      sortEventList(friEvts),
-		SaturdayEvents:    sortEventList(satEvts),
-		SundayEvents:      sortEventList(sunEvts),
-		FactTitle:         BotInstance.CurrentFactTitle,
-		Fact:              BotInstance.CurrentFact}
+		Week: &domain.WeekView{
+			Days: []domain.DayView{
+				domain.DayView{
+					DayName: "Monday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Monday), Events: sortEventList(monEvts)},
+				domain.DayView{
+					DayName: "Tuesday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Tuesday), Events: sortEventList(tuesEvts)},
+				domain.DayView{
+					DayName: "Wednesday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Wednesday), Events: sortEventList(wedEvts)},
+				domain.DayView{
+					DayName: "Thursday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Thursday), Events: sortEventList(thursEvts)},
+				domain.DayView{
+					DayName: "Friday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Friday), Events: sortEventList(friEvts)},
+				domain.DayView{
+					DayName: "Saturday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Saturday), Events: sortEventList(satEvts)},
+				domain.DayView{
+					DayName: "Sunday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Sunday), Events: sortEventList(sunEvts)}},
+		},
+
+		FactTitle: BotInstance.CurrentFactTitle,
+		Fact:      BotInstance.CurrentFact}
 
 	tmpl.Execute(f, data)
 }
@@ -143,11 +155,7 @@ func appendEventToList(targetList []*domain.EventView, e *domain.Event) []*domai
 
 func parseAndSendSched(ctx *exrouter.Context) {
 	ParseTemplate(ctx.Msg.GuildID)
-	g, err := ctx.Guild(ctx.Msg.GuildID)
-	if err != nil {
-		panic("Couldn't find guild")
-	}
-	channel := FindSchedChannel(g, BotInstance)
+	channel := FindSchedChannel(BotInstance, ctx.Msg.GuildID)
 
 	SendSchedule(channel.ID, BotInstance)
 }
@@ -361,33 +369,6 @@ func GetNewFact() (string, string) {
 	return title, content
 }
 
-/*func GetNewFact() string {
-	log.Info("Updating fact")
-
-	// Build the request
-	fp := gofeed.NewParser()
-	req, err := fp.ParseURL("https://didyouknowblog.com/rss")
-	//req, err := http.NewRequest("GET", "https://uselessfacts.jsph.pl/random.json?language=en", nil)
-	if err != nil {
-		log.Error("NewRequest: ", err)
-		return "Error retrieving facts... Sorry ;-;"
-	}
-	client := &http.Client{}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Error("Do: ", err)
-		return "Error retrieving facts... Sorry ;-;"
-	}
-	defer resp.Body.Close()
-
-	var fact domain.Fact
-
-	if err := json.NewDecoder(resp.Body).Decode(&fact); err != nil {
-		log.Error("Error decoding fact: ", err)
-	}
-	return fact.Text
-}*/
 func findRoleByName(ctx *exrouter.Context, roleName string) (*discordgo.Role, error) {
 	var foundRole *discordgo.Role
 	guildRoles, _ := ctx.Ses.GuildRoles(ctx.Msg.GuildID)
@@ -404,7 +385,11 @@ func findRoleByName(ctx *exrouter.Context, roleName string) (*discordgo.Role, er
 }
 
 // FindSchedChannel : Finds the schedule channel for a given guild
-func FindSchedChannel(guild *discordgo.Guild, inst *bot.Instance) *discordgo.Channel {
+func FindSchedChannel(inst *bot.Instance, guildID string) *discordgo.Channel {
+	guild, err := inst.ClientSession.Guild(guildID)
+	if err != nil {
+		log.Error("Error in test command ", err)
+	}
 	var schedChannel *discordgo.Channel
 	for _, schedChannel = range guild.Channels {
 		if schedChannel.Name == inst.ScheduleChannel {
@@ -446,7 +431,7 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Mess
 	var schedMsg *discordgo.Message
 	for _, msg := range msgHistory {
 		// Delete any extra schedules that may have been posted
-		if schedMsg != nil {
+		if schedMsg != nil && !strings.Contains(msg.Content, "@everyone") {
 			inst.ClientSession.ChannelMessageDelete(msg.ChannelID, msg.ID)
 		} else if msg.Author.ID == inst.ClientSession.State.User.ID {
 			schedMsg = msg
@@ -462,7 +447,7 @@ func SendSchedule(schedChannelID string, inst *bot.Instance) {
 		return
 	}
 
-	if schedMsg != nil {
+	if schedMsg != nil && !strings.Contains(strings.ToLower(schedMsg.Content), "@everyone") {
 		inst.ClientSession.ChannelMessageDelete(schedMsg.ChannelID, schedMsg.ID)
 	}
 
@@ -480,13 +465,6 @@ func takeAndSend(schedChannelID string, inst *bot.Instance) {
 	defer f.Close()
 
 	ms := &discordgo.MessageSend{
-		// Embed: &discordgo.MessageEmbed{
-		// 	Title: "Click the schedule below to see more info!",
-		// 	Color: 0x9400d3,
-		// 	Image: &discordgo.MessageEmbedImage{
-		// 		URL: "attachment://" + "schedule.png",
-		// 	},
-		// },
 		Files: []*discordgo.File{
 			&discordgo.File{
 				Name:   "schedule.png",

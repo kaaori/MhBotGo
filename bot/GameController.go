@@ -11,6 +11,7 @@ import (
 )
 
 var (
+	// EventRunning : If an event is running or not
 	EventRunning = false
 )
 
@@ -56,7 +57,6 @@ func CycleEventParamsAsStatus(evt *domain.Event, inst *Instance) {
 	i := 0
 
 	for range time.NewTicker(4 * time.Second).C {
-		// log.Info("Updating schedule")
 		defer func() {
 			if err := recover(); err != nil {
 				// if we're in here, we had a panic and have caught it

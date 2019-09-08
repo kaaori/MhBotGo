@@ -1,5 +1,6 @@
 package domain
 
+// Fact : Object representation of json
 type Fact struct {
 	ID        string `json:"id"`
 	Text      string `json:"text"`

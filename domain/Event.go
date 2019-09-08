@@ -32,15 +32,15 @@ type Event struct {
 
 // ToString : Provides a pretty-print string for the event
 func (e *Event) ToString() string {
-	return "<em>" + e.StartTime.In(e.TzLoc).Format(time.Kitchen) +
-		"</em> ── <strong>" + e.EventName +
-		"</strong> ── (Hosted  by <strong><em>" + e.HostName + "</em></strong> in " + e.EventLocation + ")"
+	return "<strong><em>" + e.StartTime.In(e.TzLoc).Format(time.Kitchen) +
+		" - " + e.EventName +
+		"</strong></em> (Hosted  by <strong><em>" + e.HostName + "</em></strong> in " + e.EventLocation + ")"
 }
 
 // ToEmbedString : Provides a pretty-print string for the event in a discord embed
 // Server Loc offset is calculated here as this is before it touches the DB and is adjusted
 func (e *Event) ToEmbedString() string {
-	return "• *" + time.Unix(e.StartTimestamp-e.TzOffset, 0).Format(time.Kitchen) +
+	return "• *" + e.StartTime.In(e.TzLoc).Format(time.Kitchen) +
 		" (Eastern Standard Time)* ── **" + e.EventName + "** ── (Hosted  by ***" + e.HostName +
 		"*** in " + e.EventLocation + ")"
 }
@@ -48,7 +48,7 @@ func (e *Event) ToEmbedString() string {
 // ToAnnounceString : Gets the string representing the pre-starting announcement for the given event
 func (e *Event) ToAnnounceString() string {
 	return "**" + e.HostName + "** is about to start this event in " +
-		e.EventLocation + " at **" + e.StartTime.Format("3:04 PM") +
+		e.EventLocation + " at **" + e.StartTime.In(e.TzLoc).Format("3:04 PM") +
 		" (Eastern Standard Time)!**"
 }
 

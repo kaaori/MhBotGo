@@ -85,13 +85,12 @@ body {
   width: 860px;
   color: #e3c6ff;
   padding: 10px;
-  
 }
 
 #banner {
   position: relative;
   width: 860px;
-  height: 128px;
+  height: 100px;
   background: linear-gradient(to left, #07040888, #160f1b 45%, transparent),
     url("./images/mhlogo.jpg") no-repeat left;
 
@@ -118,13 +117,12 @@ body {
 
 h3 {
   font-family: "Pacifico", cursive;
-  position: absolute;
+  /* position: absolute;
   top: 1px;
-  left: 10px;
+  left: 10px; */
+  text-align: center;
   color: #f1e1ff;
   text-shadow: -2px 0 black, 0 4px black, 4px 0 black, 0 -2px black;
-
-
 }
 
 h4 {
@@ -166,5 +164,38 @@ h6 {
   font-family: "Quicksand", sans-serif;
   text-decoration: underline;
   font-size: 24px;
+  text-align: center;
+}
+
+.list-group li {
+  background-color: transparent;
+  list-style: none;
+  text-align: center;
+  font-size: 16px;
+  padding: 0px 0px 0px 10px;
+}
+
+.list-group li.event {
+  text-align: justify;
+}
+
+.list-group li.event::before {
+  content: 'x';
+  margin-left: -20px;
+  margin-right: 10px;
+}
+
+.list-group li.day {
+  /* border: #b794db solid .2px; */
+  font-size: 20px;
+}
+
+.list-group li.active {
+  align-content: center;
+  background-color: #5900b8;
+  border-color: #160f1b;
+}
+
+h4.factOTD {
   text-align: center;
 }
