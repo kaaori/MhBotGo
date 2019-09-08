@@ -90,6 +90,15 @@ func InstallCommands(instance *bot.Instance) {
 		BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
 	})
 
+	router.On("delevts", func(ctx *exrouter.Context) {
+		err := BotInstance.EventDao.DeleteAllEventsForServer(ctx.Msg.GuildID)
+		if err != nil {
+			ctx.Reply("There was an error deleting all events ;-;")
+			return
+		}
+		ctx.Reply("Ok! All events for this server have been cleared")
+	})
+
 	router.On("gctemplate", func(ctx *exrouter.Context) {
 		ParseTemplate(ctx.Msg.GuildID)
 

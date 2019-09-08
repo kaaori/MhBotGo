@@ -15,6 +15,19 @@ type EventDao struct {
 	Session *discordgo.Session
 }
 
+func (d *EventDao) DeleteAllEventsForServer(serverID string) error {
+	query := "delete from Events where ServerID = ?"
+
+	stmt, err := queryForRows(query, DB, serverID)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	stmt.Exec()
+	return nil
+}
+
 // GetAllEventsForServerForWeek : Gets a server's events within a week range
 func (d *EventDao) GetAllEventsForServerForWeek(serverID string, weekTime time.Time) ([]*domain.Event, error) {
 	query := "select * from Events where ServerID = ? and StartTimestamp between ? AND ?"
