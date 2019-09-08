@@ -31,14 +31,14 @@ func TakeScreenshot(w int64, h int64) {
 
 	// capture entire browser viewport, returning png with quality=90
 	var buf []byte
-	// if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
-	// 	"#main", &buf)); err != nil {
-	// 	log.Fatal(err)
-	// }
-	if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
-		"#main", &buf, w, h)); err != nil {
+	if err := chromedp.Run(ctx, fullScreenshot("file:///"+path+"/web/schedule-parsed.html",
+		120, &buf, w, h)); err != nil {
 		log.Fatal(err)
 	}
+	// if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
+	// 	"#main", &buf, w, h)); err != nil {
+	// 	log.Fatal(err)
+	// }
 	if err := ioutil.WriteFile("schedule.png", buf, 0644); err != nil {
 		log.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func elementScreenshot(urlstr, sel string, res *[]byte, w int64, h int64) chrome
 // Liberally copied from puppeteer's source.
 //
 // Note: this will override the viewport emulation settings.
-func fullScreenshot(urlstr string, quality int64, res *[]byte) chromedp.Tasks {
+func fullScreenshot(urlstr string, quality int64, res *[]byte, w int64, h int64) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.Navigate(urlstr),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -82,7 +82,7 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte) chromedp.Tasks {
 			}
 
 			// width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
-			width, height := int64(1600), int64(900)
+			width, height := w, h
 
 			// force viewport emulation
 			err = emulation.SetDeviceMetricsOverride(width, height, 1, false).
