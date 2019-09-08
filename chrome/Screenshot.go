@@ -44,6 +44,28 @@ func TakeScreenshot(w int64, h int64) {
 	}
 }
 
+// TakeScreenshotTargeted : Takes a screenshot of the given url by target
+func TakeScreenshotTargeted(w int64, h int64, element string, part string) {
+	ctx, cancel := Init()
+	defer cancel()
+
+	path, _ := os.Getwd()
+
+	// capture entire browser viewport, returning png with quality=90
+	var buf []byte
+	if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
+		element, &buf, w, h)); err != nil {
+		log.Fatal(err)
+	}
+	// if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
+	// 	"#main", &buf, w, h)); err != nil {
+	// 	log.Fatal(err)
+	// }
+	if err := ioutil.WriteFile("schedule-"+part+".png", buf, 0644); err != nil {
+		log.Fatal(err)
+	}
+}
+
 // elementScreenshot takes a screenshot of a specific element.
 func elementScreenshot(urlstr, sel string, res *[]byte, w int64, h int64) chromedp.Tasks {
 	return chromedp.Tasks{

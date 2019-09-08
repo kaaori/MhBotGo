@@ -454,6 +454,49 @@ func SendSchedule(schedChannelID string, inst *bot.Instance) {
 	go takeAndSend(schedChannelID, inst)
 }
 
+func takeAndSendTargeted(schedChannelID string, inst *bot.Instance) {
+	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#banner", "banner")
+	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#schedule", "schedule")
+	chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#facts", "facts")
+
+	fBanner, err := os.Open("schedule-banner.png")
+	if err != nil {
+		log.Error("Error getting schedule banner", err)
+		return
+	}
+	defer fBanner.Close()
+
+	fSched, err := os.Open("schedule-schedule.png")
+	if err != nil {
+		log.Error("Error getting schedule banner", err)
+		return
+	}
+	defer fSched.Close()
+
+	fFacts, err := os.Open("schedule-facts.png")
+	if err != nil {
+		log.Error("Error getting schedule banner", err)
+		return
+	}
+	defer fFacts.Close()
+
+	ms := &discordgo.MessageSend{
+		Files: []*discordgo.File{
+			&discordgo.File{
+				Name:   "schedule-facts.png",
+				Reader: fFacts,
+			}, &discordgo.File{
+				Name:   "schedule-schedule.png",
+				Reader: fSched,
+			}, &discordgo.File{
+				Name:   "schedule-banner.png",
+				Reader: fBanner},
+		},
+	}
+
+	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, ms)
+}
+
 func takeAndSend(schedChannelID string, inst *bot.Instance) {
 	chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH)
 

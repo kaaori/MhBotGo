@@ -66,6 +66,14 @@ func InstallCommands(instance *bot.Instance) {
 		go takeAndSend(ctx.Msg.ChannelID, BotInstance)
 	})
 
+	router.On("tss", func(ctx *exrouter.Context) {
+		h, _ := strconv.ParseInt(ctx.Args[1], 10, 32)
+		w, _ := strconv.ParseInt(ctx.Args[2], 10, 32)
+		ctx.Reply("Okay, sending a targeted screenshot with size " + strconv.Itoa(int(h)) + "x" + strconv.Itoa(int(w)) + "... Standby<3")
+		ParseTemplate(ctx.Msg.GuildID)
+		go takeAndSendTargeted(ctx.Msg.ChannelID, BotInstance)
+	})
+
 	router.Group(func(r *exrouter.Route) {
 		r.Cat("events")
 
