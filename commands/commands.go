@@ -22,7 +22,7 @@ var (
 	authRoles []string
 
 	defaultScreenshotW = int64(880)
-	defaultScreenshotH = int64(1000)
+	defaultScreenshotH = int64(1080)
 
 	// BotInstance : The instance of the bot containing the discord session and all relevant DAOs
 	BotInstance *bot.Instance
