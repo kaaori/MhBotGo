@@ -24,6 +24,7 @@ func init() {
 		log.Error("Error Getting DB connection", err)
 		panic("Error connecting to sqlite")
 	}
-	db.BusyTimeout(5 * time.Second)
+	db.BusyTimeout(3 * time.Second)
 	DB = db
+	log.Info("DB Opened!")
 }

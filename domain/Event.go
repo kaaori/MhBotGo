@@ -3,6 +3,8 @@ package domain
 import (
 	"time"
 
+	strip "github.com/grokify/html-strip-tags-go"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -32,15 +34,15 @@ type Event struct {
 
 // ToString : Provides a pretty-print string for the event
 func (e *Event) ToString() string {
-	return "<strong><em>" + e.StartTime.In(e.TzLoc).Format(time.Kitchen) +
+	return "<strong><em>" + e.StartTime.Format(time.Kitchen) +
 		" - " + e.EventName +
-		"</strong></em> (Hosted  by <strong><em>" + e.HostName + "</em></strong> in " + e.EventLocation + ")"
+		"</strong></em> (Hosted  by <strong><em>" + strip.StripTags(e.HostName) + "</em></strong> in " + strip.StripTags(e.EventLocation) + ")"
 }
 
 // ToEmbedString : Provides a pretty-print string for the event in a discord embed
 // Server Loc offset is calculated here as this is before it touches the DB and is adjusted
 func (e *Event) ToEmbedString() string {
-	return "• *" + e.StartTime.In(e.TzLoc).Format(time.Kitchen) +
+	return "• *" + e.StartTime.Format(time.Kitchen) +
 		" (Eastern Standard Time)* ── **" + e.EventName + "** ── (Hosted  by ***" + e.HostName +
 		"*** in " + e.EventLocation + ")"
 }
@@ -48,7 +50,7 @@ func (e *Event) ToEmbedString() string {
 // ToAnnounceString : Gets the string representing the pre-starting announcement for the given event
 func (e *Event) ToAnnounceString() string {
 	return "**" + e.HostName + "** is about to start this event in " +
-		e.EventLocation + " at **" + e.StartTime.In(e.TzLoc).Format("3:04 PM") +
+		e.EventLocation + " at **" + e.StartTime.Format("3:04 PM") +
 		" (Eastern Standard Time)!**"
 }
 

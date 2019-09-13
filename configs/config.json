@@ -10,5 +10,6 @@
         "BotAdmin",
         "EventRunner"
     ],
-    "eventRunnerRole": "EventRunner"
+    "eventRunnerRole": "EventRunner",
+    "eventAttendeeRole": "EventAttendees"
 }

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -22,6 +23,14 @@ import (
 	"github.com/kaaori/MhBotGo/util"
 	"github.com/mmcdole/gofeed"
 	"github.com/snabb/isoweek"
+)
+
+var (
+	// ScheduleFileName : Name of schedule image
+	ScheduleFileName = "schedule.png"
+
+	// TodayFileName : The day's event image
+	TodayFileName = "today.png"
 )
 
 // MemberHasPermission : Checks if the member has a given perm
@@ -55,23 +64,39 @@ func ParseTemplate(guildID string) {
 	if err != nil {
 		panic(err)
 	}
+
+	tmplToday, err := template.ParseFiles("./web/today-template.html")
+	if err != nil {
+		panic(err)
+	}
+
 	year, week := time.Now().In(util.ServerLoc).ISOWeek()
 	t := isoweek.StartTime(year, week, time.Now().In(util.ServerLoc).Location())
 
 	g, _ := BotInstance.ClientSession.Guild(guildID)
-	f, err := os.Create("./web/schedule-parsed.html")
+	fSched, err := os.Create("./web/schedule-parsed.html")
 	if err != nil {
 		log.Error("create file: ", err)
 		return
 	}
-	defer f.Close()
+
+	defer fSched.Close()
+	fToday, err := os.Create("./web/today-parsed.html")
+	if err != nil {
+		log.Error("create file: ", err)
+		return
+	}
+	defer fToday.Close()
 
 	weekTime := util.GetCurrentWeekFromMondayAsTime()
+
 	events, err := BotInstance.EventDao.GetAllEventsForServerForWeek(guildID, weekTime)
 	if err != nil {
 		log.Error("", err)
 		return
 	}
+
+	// allEvents := make([][]*domain.EventView, 0)
 
 	monEvts := make([]*domain.EventView, 0)
 	tuesEvts := make([]*domain.EventView, 0)
@@ -80,7 +105,10 @@ func ParseTemplate(guildID string) {
 	friEvts := make([]*domain.EventView, 0)
 	satEvts := make([]*domain.EventView, 0)
 	sunEvts := make([]*domain.EventView, 0)
+	curDayEvts := make([]*domain.EventView, 0)
 
+	// TODO: to array accessed by (0-6)/(1-7) based on current day int
+	// Fixes this ugly shit lol
 	for _, el := range events {
 		dayOfWeek := el.StartTime.Weekday()
 		switch dayOfWeek {
@@ -105,37 +133,121 @@ func ParseTemplate(guildID string) {
 		case time.Sunday:
 			sunEvts = appendEventToList(sunEvts, el)
 			break
-
 		}
 	}
+
+	switch time.Now().Weekday() {
+	case time.Monday:
+		curDayEvts = monEvts
+		break
+	case time.Tuesday:
+		curDayEvts = tuesEvts
+		break
+	case time.Wednesday:
+		curDayEvts = wedEvts
+		break
+	case time.Thursday:
+		curDayEvts = thursEvts
+		break
+	case time.Friday:
+		curDayEvts = friEvts
+		break
+	case time.Saturday:
+		curDayEvts = satEvts
+		break
+	case time.Sunday:
+		curDayEvts = sunEvts
+		break
+	}
+
 	_, isoWeek := t.ISOWeek()
 	firstDayOfWeek := util.FirstDayOfISOWeek(t.Year(), isoWeek, t.Location())
+	days := buildDayViews(firstDayOfWeek,
+		sortEventList(monEvts),
+		sortEventList(tuesEvts),
+		sortEventList(wedEvts),
+		sortEventList(thursEvts),
+		sortEventList(friEvts),
+		sortEventList(satEvts),
+		sortEventList(sunEvts))
+
+	curDayEvts = sortEventList(curDayEvts)
+
 	data := domain.ScheduleView{
 		ServerName:        g.Name,
 		CurrentWeekString: string(firstDayOfWeek.Format("January 2, 2006") + " ── " + firstDayOfWeek.AddDate(0, 0, 6).Format("January 2, 2006")),
 		Tz:                "<strong>Eastern Standard Time</strong>",
+		CurrentDayString:  time.Now().Format("Monday January 2, 2006"),
+		CurrentDay:        curDayEvts,
 		Week: &domain.WeekView{
-			Days: []domain.DayView{
-				domain.DayView{
-					DayName: "Monday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Monday), Events: sortEventList(monEvts)},
-				domain.DayView{
-					DayName: "Tuesday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Tuesday), Events: sortEventList(tuesEvts)},
-				domain.DayView{
-					DayName: "Wednesday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Wednesday), Events: sortEventList(wedEvts)},
-				domain.DayView{
-					DayName: "Thursday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Thursday), Events: sortEventList(thursEvts)},
-				domain.DayView{
-					DayName: "Friday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Friday), Events: sortEventList(friEvts)},
-				domain.DayView{
-					DayName: "Saturday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Saturday), Events: sortEventList(satEvts)},
-				domain.DayView{
-					DayName: "Sunday", IsCurrentDayString: util.GetCurrentDayForSchedule(time.Sunday), Events: sortEventList(sunEvts)}},
-		},
+			Days: days},
 
 		FactTitle: BotInstance.CurrentFactTitle,
 		Fact:      BotInstance.CurrentFact}
 
-	tmpl.Execute(f, data)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		err = tmpl.Execute(fSched, data)
+		if err != nil {
+			log.Error("Error executing template", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		err = tmplToday.Execute(fToday, data)
+		if err != nil {
+			log.Error("Error executing template", err)
+		}
+	}()
+
+	// Wait for both templates to be done processing
+	wg.Wait()
+}
+
+func buildDayViews(firstDayOfWeek time.Time, events ...[]*domain.EventView) []domain.DayView {
+	monday := domain.DayView{
+		DayName:            "Monday (" + firstDayOfWeek.Format("1/2") + ")",
+		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Monday),
+		Events:             events[0]}
+	tuesday := domain.DayView{
+		DayName:            "Tuesday (" + firstDayOfWeek.AddDate(0, 0, 1).Format("1/2") + ")",
+		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Tuesday),
+		Events:             events[1]}
+	wednesday := domain.DayView{
+		DayName:            "Wednesday (" + firstDayOfWeek.AddDate(0, 0, 2).Format("1/2") + ")",
+		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Wednesday),
+		Events:             events[2]}
+	thursday := domain.DayView{
+		DayName:            "Thursday (" + firstDayOfWeek.AddDate(0, 0, 3).Format("1/2") + ")",
+		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Thursday),
+		Events:             events[3]}
+	friday := domain.DayView{
+		DayName:            "Friday (" + firstDayOfWeek.AddDate(0, 0, 4).Format("1/2") + ")",
+		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Friday),
+		Events:             events[4]}
+	saturday := domain.DayView{
+		DayName:            "Saturday (" + firstDayOfWeek.AddDate(0, 0, 5).Format("1/2") + ")",
+		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Saturday),
+		Events:             events[5]}
+	sunday := domain.DayView{
+		DayName:            "Sunday (" + firstDayOfWeek.AddDate(0, 0, 6).Format("1/2") + ")",
+		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Sunday),
+		Events:             events[6]}
+
+	days := []domain.DayView{
+		monday,
+		tuesday,
+		wednesday,
+		thursday,
+		friday,
+		saturday,
+		sunday,
+	}
+	return days
 }
 
 func sortEventList(evts []*domain.EventView) []*domain.EventView {
@@ -149,15 +261,16 @@ func appendEventToList(targetList []*domain.EventView, e *domain.Event) []*domai
 	return append(targetList, &domain.EventView{
 		PrettyPrint:    e.ToString(),
 		StartTimestamp: e.StartTimestamp,
-		HasPassed:      time.Now().In(util.ServerLoc).After(e.StartTime.In(util.ServerLoc)),
+		HasPassed:      time.Now().In(util.ServerLoc).After(e.StartTime),
 		DayOfWeek:      e.StartTime.Weekday().String()})
 }
 
+// TODO: check if another refresh is in progress?
 func parseAndSendSched(ctx *exrouter.Context) {
 	ParseTemplate(ctx.Msg.GuildID)
 	channel := FindSchedChannel(BotInstance, ctx.Msg.GuildID)
 
-	SendSchedule(channel.ID, BotInstance)
+	SendSchedule(channel.ID, ctx.Msg.GuildID, BotInstance)
 }
 
 func postEventStats(ctx *exrouter.Context) {
@@ -233,7 +346,7 @@ func removeEvent(ctx *exrouter.Context) bool {
 		return false
 	}
 
-	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(ctx.Msg.GuildID, t.Unix()-util.ServerLocOffset)
+	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(ctx.Msg.GuildID, t.Unix())
 	if err != nil || referencedEvent == nil {
 		ctx.Reply("Could not find that event, please try again")
 		return false
@@ -276,9 +389,7 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 
 // GetEmbedFromEvent : Returns a discord embed with the relevant event details
 func GetEmbedFromEvent(event *domain.Event, eventEmbedText string) *discordgo.MessageEmbed {
-	t := time.Unix(event.StartTimestamp, 0)
-	timeObj := t.In(util.ServerLoc).Format("January 2, 2006")
-	baseField := util.GetField("Event "+eventEmbedText+timeObj, event.ToEmbedString(), false)
+	baseField := util.GetField("Event "+eventEmbedText+event.StartTime.Format("January 2, 2006"), event.ToEmbedString(), false)
 	baseEmbed := util.GetEmbed("", "", false, baseField)
 	return baseEmbed
 }
@@ -360,7 +471,7 @@ func GetNewFact() (string, string) {
 
 	if len(feed.Items) <= 0 {
 		//error shit
-		return "error title", "error body"
+		return "Uh oh! Fact not found ;-;", "Fact of the day could not be reached... I'm sorry ;-;"
 	}
 	curItem := feed.Items[0]
 	title := curItem.Title
@@ -431,8 +542,11 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Mess
 	var schedMsg *discordgo.Message
 	for _, msg := range msgHistory {
 		// Delete any extra schedules that may have been posted
-		if schedMsg != nil && !strings.Contains(msg.Content, "@everyone") {
-			inst.ClientSession.ChannelMessageDelete(msg.ChannelID, msg.ID)
+		if schedMsg != nil && !strings.Contains(schedMsg.Content, "@everyone") {
+			err = inst.ClientSession.ChannelMessageDelete(msg.ChannelID, msg.ID)
+			if err != nil {
+				log.Error("Error deleting message")
+			}
 		} else if msg.Author.ID == inst.ClientSession.State.User.ID {
 			schedMsg = msg
 		}
@@ -441,82 +555,76 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Mess
 }
 
 // SendSchedule : Parses and sends the schedule message to a given channel
-func SendSchedule(schedChannelID string, inst *bot.Instance) {
+func SendSchedule(schedChannelID string, guildID string, inst *bot.Instance) {
 	schedMsg, err := GetSchedMessage(schedChannelID, inst)
 	if err != nil {
 		return
 	}
 
-	if schedMsg != nil && !strings.Contains(strings.ToLower(schedMsg.Content), "@everyone") {
+	if schedMsg != nil && !strings.Contains(schedMsg.Content, "@everyone") {
 		inst.ClientSession.ChannelMessageDelete(schedMsg.ChannelID, schedMsg.ID)
 	}
 
-	go takeAndSend(schedChannelID, inst)
+	go takeAndSendTargeted(schedChannelID, guildID, inst)
 }
 
-func takeAndSendTargeted(schedChannelID string, inst *bot.Instance) {
-	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#banner", "banner")
-	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#schedule", "schedule")
-	chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#facts", "facts")
+func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instance) {
+	path, _ := os.Getwd()
 
-	fBanner, err := os.Open("schedule-banner.png")
-	if err != nil {
-		log.Error("Error getting schedule banner", err)
-		return
-	}
-	defer fBanner.Close()
+	var wg sync.WaitGroup
 
-	fSched, err := os.Open("schedule-schedule.png")
+	// Add our two screenshots to the wait group
+	wg.Add(2)
+
+	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#main", ScheduleFileName, "file:///"+path+"/web/schedule-parsed.html", &wg)
+
+	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#today", TodayFileName, "file:///"+path+"/web/today-parsed.html", &wg)
+
+	// Wait for both screenshots to be finished
+	wg.Wait()
+
+	fSched, err := os.Open(TodayFileName)
 	if err != nil {
 		log.Error("Error getting schedule banner", err)
 		return
 	}
 	defer fSched.Close()
 
-	fFacts, err := os.Open("schedule-facts.png")
+	fFacts, err := os.Open(ScheduleFileName)
 	if err != nil {
 		log.Error("Error getting schedule banner", err)
 		return
 	}
 	defer fFacts.Close()
 
-	ms := &discordgo.MessageSend{
+	msSched := &discordgo.MessageSend{
 		Files: []*discordgo.File{
 			&discordgo.File{
-				Name:   "schedule-facts.png",
-				Reader: fFacts,
-			}, &discordgo.File{
-				Name:   "schedule-schedule.png",
+				Name:   ScheduleFileName,
 				Reader: fSched,
-			}, &discordgo.File{
-				Name:   "schedule-banner.png",
-				Reader: fBanner},
-		},
-	}
-
-	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, ms)
-}
-
-func takeAndSend(schedChannelID string, inst *bot.Instance) {
-	chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH)
-
-	f, err := os.Open("schedule.png")
-	if err != nil {
-		log.Error("Error getting schedule image", err)
-		return
-	}
-	defer f.Close()
-
-	ms := &discordgo.MessageSend{
-		Files: []*discordgo.File{
+			},
 			&discordgo.File{
-				Name:   "schedule.png",
-				Reader: f,
+				Name:   TodayFileName,
+				Reader: fFacts,
 			},
 		},
 	}
 
-	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, ms)
+	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, msSched)
+	go deleteFiles()
+}
+
+func deleteFiles() {
+	err := os.Remove(ScheduleFileName)
+	if err != nil {
+		log.Error("Error deleting schedule", err)
+		return
+	}
+	err = os.Remove(TodayFileName)
+	if err != nil {
+		log.Error("Error deleting schedule banner", err)
+		return
+	}
 }
 
 func getMinutesOrHoursInRelationToClosestEvent(nearestEvent *domain.Event) string {

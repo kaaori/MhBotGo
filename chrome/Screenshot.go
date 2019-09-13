@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
@@ -23,7 +24,7 @@ func Init() (context.Context, context.CancelFunc) {
 }
 
 // TakeScreenshot : Takes a screenshot of the given url
-func TakeScreenshot(w int64, h int64) {
+func TakeScreenshot(w int64, h int64, channelID string) {
 	ctx, cancel := Init()
 	defer cancel()
 
@@ -35,33 +36,40 @@ func TakeScreenshot(w int64, h int64) {
 		120, &buf, w, h)); err != nil {
 		log.Fatal(err)
 	}
-	// if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
-	// 	"#main", &buf, w, h)); err != nil {
-	// 	log.Fatal(err)
-	// }
-	if err := ioutil.WriteFile("schedule.png", buf, 0644); err != nil {
+
+	var todayBuf []byte
+	if err := chromedp.Run(ctx, fullScreenshot("file:///"+path+"/web/today-parsed.html",
+		120, &buf, w, h)); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile("schedule-chan-"+channelID+".png", buf, 0644); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile("today-chan-"+channelID+".png", todayBuf, 0644); err != nil {
 		log.Fatal(err)
 	}
 }
 
 // TakeScreenshotTargeted : Takes a screenshot of the given url by target
-func TakeScreenshotTargeted(w int64, h int64, element string, part string) {
+func TakeScreenshotTargeted(w int64, h int64, element string, fileName string, urlString string, waitgroup ...*sync.WaitGroup) {
+	if len(waitgroup) > 0 {
+		defer waitgroup[0].Done()
+	}
+
 	ctx, cancel := Init()
 	defer cancel()
 
-	path, _ := os.Getwd()
-
-	// capture entire browser viewport, returning png with quality=90
 	var buf []byte
-	if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
+	emulation.SetScrollbarsHidden(true)
+	emulation.SetDeviceMetricsOverride(w, h, 1, false)
+	if err := chromedp.Run(ctx, elementScreenshot(urlString,
 		element, &buf, w, h)); err != nil {
 		log.Fatal(err)
 	}
-	// if err := chromedp.Run(ctx, elementScreenshot("file:///"+path+"/web/schedule-parsed.html",
-	// 	"#main", &buf, w, h)); err != nil {
-	// 	log.Fatal(err)
-	// }
-	if err := ioutil.WriteFile("schedule-"+part+".png", buf, 0644); err != nil {
+
+	if err := ioutil.WriteFile(fileName, buf, 0644); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -69,19 +77,6 @@ func TakeScreenshotTargeted(w int64, h int64, element string, part string) {
 // elementScreenshot takes a screenshot of a specific element.
 func elementScreenshot(urlstr, sel string, res *[]byte, w int64, h int64) chromedp.Tasks {
 	return chromedp.Tasks{
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			width, height := int64(w), int64(h)
-			err := emulation.SetDeviceMetricsOverride(width, height, 1, false).
-				WithScreenOrientation(&emulation.ScreenOrientation{
-					Type:  emulation.OrientationTypeLandscapePrimary,
-					Angle: 0,
-				}).
-				Do(ctx)
-			if err != nil {
-				return err
-			}
-			return nil
-		}),
 		chromedp.Navigate(urlstr),
 		chromedp.WaitVisible(sel, chromedp.ByID),
 		chromedp.Screenshot(sel, res, chromedp.NodeVisible, chromedp.ByID),
@@ -105,9 +100,8 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte, w int64, h int64)
 
 			// width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
 			width, height := w, h
-
 			// force viewport emulation
-			err = emulation.SetDeviceMetricsOverride(width, height, 1, false).
+			err = emulation.SetDeviceMetricsOverride(width, height, .75, false).
 				WithScreenOrientation(&emulation.ScreenOrientation{
 					Type:  emulation.OrientationTypePortraitPrimary,
 					Angle: 0,
@@ -124,7 +118,7 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte, w int64, h int64)
 					X:      contentSize.X,
 					Y:      contentSize.Y,
 					Width:  float64(width),
-					Height: contentSize.Height,
+					Height: float64(height),
 					Scale:  1,
 				}).Do(ctx)
 			if err != nil {

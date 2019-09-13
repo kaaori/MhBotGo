@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Necroforger/dgrouter/exrouter"
@@ -19,8 +18,8 @@ var (
 	session   *discordgo.Session
 	authRoles []string
 
-	defaultScreenshotW = int64(880)
-	defaultScreenshotH = int64(1080)
+	defaultScreenshotW = int64(1920)
+	defaultScreenshotH = int64(1)
 
 	// BotInstance : The instance of the bot containing the discord session and all relevant DAOs
 	BotInstance *bot.Instance
@@ -43,8 +42,6 @@ func InstallCommands(instance *bot.Instance) {
 	//				- Users can unassign their birthday 			: !mh birthday reset
 	//				- Bot will check for the week if a birthday is occurring in the set week
 	//					* Add special event for user's birthday to append to schedule
-	//
-	//
 
 	refreshAuthRoles()
 	BotInstance = instance
@@ -58,20 +55,10 @@ func InstallCommands(instance *bot.Instance) {
 	// 	ctx.Reply("Reply text here!")
 	// }).Desc("Descriptive text")
 
-	router.On("testss", func(ctx *exrouter.Context) {
-		h, _ := strconv.ParseInt(ctx.Args[1], 10, 32)
-		w, _ := strconv.ParseInt(ctx.Args[2], 10, 32)
-		ctx.Reply("Okay, sending a screenshot with size " + strconv.Itoa(int(h)) + "x" + strconv.Itoa(int(w)) + "... Standby<3")
-		ParseTemplate(ctx.Msg.GuildID)
-		go takeAndSend(ctx.Msg.ChannelID, BotInstance)
-	})
-
 	router.On("tss", func(ctx *exrouter.Context) {
-		h, _ := strconv.ParseInt(ctx.Args[1], 10, 32)
-		w, _ := strconv.ParseInt(ctx.Args[2], 10, 32)
-		ctx.Reply("Okay, sending a targeted screenshot with size " + strconv.Itoa(int(h)) + "x" + strconv.Itoa(int(w)) + "... Standby<3")
+		ctx.Reply("Okay, sending a targeted screenshot~ Standby<3")
 		ParseTemplate(ctx.Msg.GuildID)
-		go takeAndSendTargeted(ctx.Msg.ChannelID, BotInstance)
+		go takeAndSendTargeted(ctx.Msg.ChannelID, ctx.Msg.GuildID, BotInstance)
 	})
 
 	router.Group(func(r *exrouter.Route) {
@@ -97,7 +84,7 @@ func InstallCommands(instance *bot.Instance) {
 			})
 		r.On("events", nil).
 			On("stats", func(ctx *exrouter.Context) {
-				postEventStats(ctx)
+				go postEventStats(ctx)
 			})
 		r.On("events", nil).On("refresh", func(ctx *exrouter.Context) {
 			if !AuthEventRunner(ctx) {

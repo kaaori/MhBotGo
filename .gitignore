@@ -15,3 +15,5 @@
 .vscode/*
 .vscode/launch.json
 configs/config-LIVE.json
+
+build/*

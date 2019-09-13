@@ -7,5 +7,7 @@ type ScheduleView struct {
 	Tz                string
 	FactTitle         string
 	Fact              string
+	CurrentDayString  string
 	Week              *WeekView
+	CurrentDay        []*EventView
 }
