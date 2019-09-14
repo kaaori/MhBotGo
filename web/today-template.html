@@ -16,10 +16,12 @@
 
 <body>
     <div id="today">
+        <div id="today-content">
         <div id="today-banner">
             <!--img class="img" src="./images/mhlogo.jpg" width="128" height="128" alt="Midnight Haven logo"-->
             <h3>Hello, {{.ServerName}}! ❤️</h3>
-            <h4>Here is the current lineup of events for {{.CurrentDayString}}!</h4>
+            
+            <h4 class="today-subtext">Here is the current lineup of events for {{.CurrentDayString}}!</h4>
         </div>
         <hr />
         <div id="today-schedule">
@@ -40,6 +42,7 @@
             <p class="factClickbait">View the full schedule below to see the rest of the fact!</p>
         </div>
 
+    </div>
     </div>
 </body>
 
