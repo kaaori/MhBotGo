@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"syscall"
 
+	"github.com/kaaori/MhBotGo/dao"
+
 	"github.com/kaaori/MhBotGo/scheduler"
 
 	"github.com/fsnotify/fsnotify"
@@ -97,6 +99,7 @@ func main() {
 	}
 	// Defer the session cleanup until the application is closed
 	defer BotInstance.ClientSession.Close()
+	defer dao.DB.Close()
 	scheduler.Init(BotInstance)
 
 	// Wait here until CTRL-C or other term signal is received.
@@ -104,4 +107,5 @@ func main() {
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
+
 }

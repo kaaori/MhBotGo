@@ -164,6 +164,7 @@ func (d *EventDao) GetEventByStartTime(guildID string, startTime int64) (*domain
 
 // UpdateEvent : Updates an event by object
 // Returns ID of new event
+// We need to offset the last announcement timestamp, as the rest will already have been offset upon insert
 func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
 	query := "UPDATE Events " +
 		"	SET " +
@@ -261,7 +262,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session) *domai
 	defer stmt.Close()
 
 	err = stmt.Exec(event.ServerID, event.CreatorID, event.EventName, event.EventLocation, event.HostName,
-		event.CreationTimestamp-util.ServerLocOffset, event.StartTimestamp-util.ServerLocOffset, -1, event.DurationMinutes)
+		event.CreationTimestamp, event.StartTimestamp, -1, event.DurationMinutes)
 	if err != nil {
 		log.Error("Error inserting event", err)
 		return nil
@@ -318,9 +319,13 @@ func mapORMFields(event *domain.Event, s *discordgo.Session) (*domain.Event, err
 	}
 	event.Creator = creator
 
-	event.CreationTime = time.Unix(event.CreationTimestamp, 0).In(util.ServerLoc)
-	event.StartTime = time.Unix(event.StartTimestamp, 0).In(util.ServerLoc)
-	event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
+	event.CreationTime = time.Unix(event.CreationTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
+	event.StartTime = time.Unix(event.StartTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
+	if event.LastAnnouncementTimestamp < 0 {
+		event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
+	} else {
+		event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp-util.ServerLocOffset, 0)
+	}
 	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.ServerLoc)
 	event.TzOffset = util.ServerLocOffset
 	event.TzLoc = util.ServerLoc
@@ -366,6 +371,7 @@ func processStmtForEventArray(stmt *sqlite3.Stmt, d *EventDao) ([]*domain.Event,
 func processStmtForEvent(stmt *sqlite3.Stmt, d *EventDao) (*domain.Event, error) {
 	event, err := getEventFromStmt(stmt, d)
 	if err != nil {
+		stmt.Close()
 		return nil, err
 	}
 	return event, err

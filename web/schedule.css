@@ -78,18 +78,51 @@ body {
   text-decoration: line-through;
 }
 
+.container {
+  padding: 10px;
+}
+
 #main {
+  margin-left: auto;
+  margin-right: auto;
+  /* margin-bottom: 10px; */
   font-family: "Inconsolata", monospace;
   text-shadow: -1px 0 black, 0 2px black, 2px 0 black, 0 -1px black;
   font-size: 28px;
-  width: 860px;
+  width: 100%;
+  height: 100%;
   color: #e3c6ff;
-  padding: 10px;
+  padding: 5px;
+}
+
+#today {
+  /* margin-bottom: 80px; */
+  margin-left: auto;
+  margin-right: auto;
+  font-family: "Inconsolata", monospace;
+  text-shadow: -1px 0 black, 0 2px black, 2px 0 black, 0 -1px black;
+  font-size: 28px;
+  width: 100%;
+  height: 100%;
+  color: #e3c6ff;
+  padding: 5px;
+}
+
+#today-banner {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  background: linear-gradient(to left, #07040888, #160f1b 45%, transparent),
+    url("./images/mhlogo.jpg") no-repeat left;
+
+  border: 2px solid #1c0e2b;
+  border-radius: 8px;
+  box-shadow: 8px 8px #00000070;
 }
 
 #banner {
   position: relative;
-  width: 860px;
+  width: 100%;
   height: 100px;
   background: linear-gradient(to left, #07040888, #160f1b 45%, transparent),
     url("./images/mhlogo.jpg") no-repeat left;
@@ -105,7 +138,18 @@ body {
 }
 
 #schedule {
-  width: 860px;
+  width: 100%;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.568);
+  padding-left: 15px;
+  padding-right: 20px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+#today-schedule {
+  width: 100%;
   bottom: 20px;
   right: 20px;
   background-color: rgba(0, 0, 0, 0.568);
@@ -148,11 +192,13 @@ h6 {
 }
 
 #facts {
+  display: inline-block;
   padding: 10px 10px 10px 15px;
   right: 10px;
-  width: 860px;
+  width: 100%;
   background-color: rgba(0, 0, 0, 0.568);
   margin-top: 15px;
+  /* margin-bottom: 80px; */
 }
 
 #facts p {
@@ -164,6 +210,16 @@ h6 {
   text-decoration: underline;
   font-size: 24px;
   text-align: center;
+}
+
+#facts p.factClickbait {
+  font-family: "Quicksand", sans-serif;
+  font-size: 18px;
+  text-align: center;
+}
+
+#spacer {
+  height: 20px;
 }
 
 .list-group li {
@@ -186,7 +242,7 @@ h6 {
 
 .list-group li.day {
   /* border: #b794db solid .2px; */
-  font-size: 24px;
+  font-size: 30px;
 }
 
 .list-group li.active {

@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -27,8 +26,9 @@ func Init(inst *bot.Instance) {
 
 	// Check birthdays here as well
 	gocron.Every(1).Monday().At("12:00").Do(weeklyEvents, inst)
-	// gocron.Every(20).Seconds().Do(ClearSchedulesAndMakeEveryoneMad, inst)
+
 	gocron.Every(1).Day().At("00:30").Do(UpdateFact, inst)
+	gocron.Every(1).Day().At("2:00").Do(UpdateSchedule, inst)
 	gocron.Start()
 
 	go procEventLoop(inst)
@@ -52,6 +52,19 @@ func procEventLoop(inst *bot.Instance) {
 		}
 		checkEvents(t, inst)
 		i++
+	}
+}
+
+// UpdateSchedule : Refreshes the schedule for the current day
+func UpdateSchedule(inst *bot.Instance) {
+	for _, g := range inst.ClientSession.State.Guilds {
+		schedChannel := commands.FindSchedChannel(inst, g.ID)
+		if schedChannel == nil {
+			log.Error("Couldn't find schedule channel")
+			continue
+		}
+
+		commands.SendSchedule(schedChannel.ID, g.ID, inst)
 	}
 }
 
@@ -91,12 +104,11 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 				continue
 			}
 
+			// Delete all messages in schedule channel
 			var msgIDsToDelete []string
 			for _, msg := range msgs {
 				log.Info("Msg: ")
-				if strings.Contains(msg.Content, "@everyone") {
-					msgIDsToDelete = append(msgIDsToDelete, msg.ID)
-				}
+				msgIDsToDelete = append(msgIDsToDelete, msg.ID)
 			}
 			if len(msgIDsToDelete) > 0 {
 				inst.ClientSession.ChannelMessagesBulkDelete(schedChannel.ID, msgIDsToDelete)
@@ -105,12 +117,12 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 			}
 			commands.ParseTemplate(g.ID)
 			PingEveryoneInScheduleChannel(schedChannel.GuildID, schedChannel.ID, inst.ClientSession)
-			commands.SendSchedule(schedChannel.ID, inst)
+			commands.SendSchedule(schedChannel.ID, g.ID, inst)
 		}
 	}
 }
 
-// UpdateFact : Updates the fact of hte day from an RSS feed
+// UpdateFact : Updates the fact of the day from an RSS feed
 func UpdateFact(inst *bot.Instance) {
 	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact()
 }
@@ -128,7 +140,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 		schedMsg, _ := commands.GetSchedMessage(schedChannel.ID, inst)
 		if schedMsg == nil {
 			commands.ParseTemplate(g.ID)
-			commands.SendSchedule(schedChannel.ID, inst)
+			commands.SendSchedule(schedChannel.ID, g.ID, inst)
 		}
 
 		weekTime := util.GetCurrentWeekFromMondayAsTime()
@@ -149,6 +161,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			}
 			var announcement string
 			body := ""
+			content := ""
 
 			// Unannounced = -1
 			if timeTilEvt.Minutes() <= 20 &&
@@ -157,23 +170,29 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 
 				announcement = "**___" + evt.EventName + "___**" + " in *" + util.GetRoundedMinutesTilEvent(evt.StartTime) + " minutes!*"
 				body = evt.ToAnnounceString()
+				evt.LastAnnouncementTimestamp = 1
+
 			} else if (timeSinceEvt.Nanoseconds() >= 0 || timeTilEvt < 0) &&
-				(evt.StartTime.After(evt.LastAnnouncementTime) || evt.LastAnnouncementTimestamp < 0) &&
+				(evt.LastAnnouncementTimestamp <= 1) &&
 				timeSinceEvt.Hours() <= 2 {
 
 				bot.EventRunning = true
 				announcement = "**___" + evt.EventName + "___**" + " **has started!**"
 				body = evt.ToStartingString()
 				commands.ParseTemplate(g.ID)
-				go commands.SendSchedule(schedChannel.ID, inst)
+				go commands.SendSchedule(schedChannel.ID, evt.ServerID, inst)
 				go bot.CycleEventParamsAsStatus(evt, inst)
+				content = "Ping event attendees role goes here~"
+				evt.LastAnnouncementTimestamp = 2
 			} else {
 				continue
 			}
 
-			evt.LastAnnouncementTimestamp = time.Now().Unix()
 			inst.EventDao.UpdateEvent(evt)
-			inst.ClientSession.ChannelMessageSendEmbed(announcementChannel.ID, commands.GetAnnounceEmbedFromEvent(evt, body, announcement))
+			msg := &discordgo.MessageSend{
+				Embed:   commands.GetAnnounceEmbedFromEvent(evt, body, announcement),
+				Content: content}
+			inst.ClientSession.ChannelMessageSendComplex(announcementChannel.ID, msg)
 			log.Trace("Updated event " + evt.EventName)
 		}
 	}
