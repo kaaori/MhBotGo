@@ -161,6 +161,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			}
 			var announcement string
 			body := ""
+			content := ""
 
 			// Unannounced = -1
 			if timeTilEvt.Minutes() <= 20 &&
@@ -169,9 +170,10 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 
 				announcement = "**___" + evt.EventName + "___**" + " in *" + util.GetRoundedMinutesTilEvent(evt.StartTime) + " minutes!*"
 				body = evt.ToAnnounceString()
+				evt.LastAnnouncementTimestamp = 1
 
 			} else if (timeSinceEvt.Nanoseconds() >= 0 || timeTilEvt < 0) &&
-				(evt.StartTime.After(evt.LastAnnouncementTime) || evt.LastAnnouncementTimestamp < 0) &&
+				(evt.LastAnnouncementTimestamp <= 1) &&
 				timeSinceEvt.Hours() <= 2 {
 
 				bot.EventRunning = true
@@ -180,16 +182,16 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 				commands.ParseTemplate(g.ID)
 				go commands.SendSchedule(schedChannel.ID, evt.ServerID, inst)
 				go bot.CycleEventParamsAsStatus(evt, inst)
-
+				content = "Ping event attendees role goes here~"
+				evt.LastAnnouncementTimestamp = 2
 			} else {
 				continue
 			}
 
-			evt.LastAnnouncementTimestamp = time.Now().Unix()
 			inst.EventDao.UpdateEvent(evt)
 			msg := &discordgo.MessageSend{
 				Embed:   commands.GetAnnounceEmbedFromEvent(evt, body, announcement),
-				Content: "Ping event attendees role goes here"}
+				Content: content}
 			inst.ClientSession.ChannelMessageSendComplex(announcementChannel.ID, msg)
 			log.Trace("Updated event " + evt.EventName)
 		}

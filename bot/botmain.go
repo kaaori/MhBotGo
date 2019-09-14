@@ -8,13 +8,17 @@ import (
 
 // Instance : The current instance of the bot and its session
 type Instance struct {
-	ClientSession             *discordgo.Session
-	ServerDao                 dao.DiscordServerDao
-	EventDao                  dao.EventDao
+	ClientSession     *discordgo.Session
+	ServerDao         dao.DiscordServerDao
+	EventDao          dao.EventDao
+	EventAttendeeRole *discordgo.Role
+	EventRunnerRole   *discordgo.Role
+
 	AnnouncementChannel       string
 	ScheduleChannel           string
 	HasClearedSchedule        bool
 	EventRunnerRoleName       string
+	EventAttendeeRoleName     string
 	CurrentFactTitle          string
 	CurrentFact               string
 	ScheduleMessagesByGuildID map[string]string
@@ -36,7 +40,8 @@ func InitBot(token string, dbLocation string) *Instance {
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}
 	inst.EventDao = dao.EventDao{Session: inst.ClientSession}
 	inst.HasClearedSchedule = false
-	inst.EventRunnerRoleName = viper.GetString("EventRunnerRole")
+	inst.EventRunnerRoleName = viper.GetString("eventRunnerRole")
+	inst.EventAttendeeRoleName = viper.GetString("eventAttendeeRole")
 
 	return inst
 }

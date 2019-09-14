@@ -85,7 +85,7 @@ func InstallCommands(instance *bot.Instance) {
 		r.On("events", nil).
 			On("stats", func(ctx *exrouter.Context) {
 				go postEventStats(ctx)
-			})
+			}).Alias("next")
 		r.On("events", nil).On("refresh", func(ctx *exrouter.Context) {
 			if !AuthEventRunner(ctx) {
 				return

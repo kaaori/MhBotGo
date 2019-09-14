@@ -586,16 +586,16 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	fSched, err := os.Open(TodayFileName)
 	if err != nil {
 		log.Error("Error getting schedule banner", err)
+		fSched.Close()
 		return
 	}
-	defer fSched.Close()
 
 	fFacts, err := os.Open(ScheduleFileName)
 	if err != nil {
 		log.Error("Error getting schedule banner", err)
+		fFacts.Close()
 		return
 	}
-	defer fFacts.Close()
 
 	msSched := &discordgo.MessageSend{
 		Files: []*discordgo.File{
@@ -611,6 +611,8 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	}
 
 	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, msSched)
+	fFacts.Close()
+	fSched.Close()
 	go deleteFiles()
 }
 

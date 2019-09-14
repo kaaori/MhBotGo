@@ -321,7 +321,11 @@ func mapORMFields(event *domain.Event, s *discordgo.Session) (*domain.Event, err
 
 	event.CreationTime = time.Unix(event.CreationTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
 	event.StartTime = time.Unix(event.StartTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
-	event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp-util.ServerLocOffset, 0)
+	if event.LastAnnouncementTimestamp < 0 {
+		event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
+	} else {
+		event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp-util.ServerLocOffset, 0)
+	}
 	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.ServerLoc)
 	event.TzOffset = util.ServerLocOffset
 	event.TzLoc = util.ServerLoc
