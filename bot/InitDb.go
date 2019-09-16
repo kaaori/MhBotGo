@@ -29,9 +29,12 @@ func ReadDML(dbLocation string) {
 }
 
 func installDML(dml string, dbLocation string) {
-	if dao.DB != nil {
-		err := dao.DB.Exec(dml)
-		log.Info(strconv.Itoa(dao.DB.TotalChanges()) + " Changes")
+	DB := dao.GetConnection()
+	defer DB.Close()
+
+	if DB != nil {
+		err := DB.Exec(dml)
+		log.Info(strconv.Itoa(DB.TotalChanges()) + " Changes")
 		isError(err)
 
 		log.Info("Tables created")

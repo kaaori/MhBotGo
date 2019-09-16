@@ -6,7 +6,6 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"github.com/kaaori/MhBotGo/bot"
 	"github.com/kaaori/MhBotGo/chrome"
 	"github.com/kaaori/MhBotGo/domain"
+	"github.com/kaaori/MhBotGo/profiler"
 	"github.com/kaaori/MhBotGo/util"
 	"github.com/mmcdole/gofeed"
 	"github.com/snabb/isoweek"
@@ -60,6 +60,7 @@ func MemberHasPermission(s *discordgo.Session, guildID string, userID string, pe
 // ParseTemplate : Parses a given guild's events
 // Returns true if the schedule needs a refresh
 func ParseTemplate(guildID string) {
+	profiler.Start()
 	tmpl, err := template.ParseFiles("./web/schedule-template.html")
 	if err != nil {
 		panic(err)
@@ -70,9 +71,12 @@ func ParseTemplate(guildID string) {
 		panic(err)
 	}
 
+	profiler.StopAndPrintSeconds("Template parsing")
+
 	year, week := time.Now().In(util.ServerLoc).ISOWeek()
 	t := isoweek.StartTime(year, week, time.Now().In(util.ServerLoc).Location())
 
+	profiler.Start()
 	g, _ := BotInstance.ClientSession.Guild(guildID)
 	fSched, err := os.Create("./web/schedule-parsed.html")
 	if err != nil {
@@ -80,22 +84,32 @@ func ParseTemplate(guildID string) {
 		return
 	}
 
-	defer fSched.Close()
 	fToday, err := os.Create("./web/today-parsed.html")
 	if err != nil {
+		fSched.Close()
 		log.Error("create file: ", err)
 		return
 	}
-	defer fToday.Close()
-
+	profiler.StopAndPrintSeconds("File creation")
 	weekTime := util.GetCurrentWeekFromMondayAsTime()
 
-	events, err := BotInstance.EventDao.GetAllEventsForServerForWeek(guildID, weekTime)
+	events, err := BotInstance.EventDao.GetAllEventsForServerForWeek(guildID, weekTime, g)
 	if err != nil {
+		fToday.Close()
 		log.Error("", err)
 		return
 	}
 
+	// if len(evts) <= 0 && !contains(guildsWithNoEvents, g.ID) {
+	// 	guildsWithNoEvents = append(guildsWithNoEvents, g.ID)
+	// 	ParseTemplate(g.ID)
+	// 	go SendSchedule(schedChannel.ID, g.ID, inst)
+	// 	continue
+	// } else if len(evts) > 0 && !contains(guildsWithNoEvents, g.ID) {
+	// 	guildsWithNoEvents = remove(guildsWithNoEvents, g.ID)
+	// }
+
+	profiler.StopAndPrintSeconds("Getting all events")
 	// allEvents := make([][]*domain.EventView, 0)
 
 	monEvts := make([]*domain.EventView, 0)
@@ -172,7 +186,7 @@ func ParseTemplate(guildID string) {
 		sortEventList(sunEvts))
 
 	curDayEvts = sortEventList(curDayEvts)
-
+	profiler.StopAndPrintSeconds("Parsing events to views")
 	data := domain.ScheduleView{
 		ServerName:        g.Name,
 		CurrentWeekString: string(firstDayOfWeek.Format("January 2, 2006") + " ── " + firstDayOfWeek.AddDate(0, 0, 6).Format("January 2, 2006")),
@@ -206,6 +220,9 @@ func ParseTemplate(guildID string) {
 
 	// Wait for both templates to be done processing
 	wg.Wait()
+	fSched.Close()
+	fToday.Close()
+	profiler.StopAndPrintSeconds("Executing templates")
 }
 
 func buildDayViews(firstDayOfWeek time.Time, events ...[]*domain.EventView) []domain.DayView {
@@ -288,7 +305,7 @@ func postEventStats(ctx *exrouter.Context) {
 		return
 	}
 
-	nearestEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID)
+	nearestEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID, guild)
 	nearestEventStr := ""
 	if err != nil {
 		log.Error("Error retrieving next event")
@@ -324,7 +341,8 @@ func addEvent(ctx *exrouter.Context) bool {
 		return false
 	}
 
-	event = BotInstance.EventDao.InsertEvent(event, BotInstance.ClientSession)
+	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
+	event = BotInstance.EventDao.InsertEvent(event, BotInstance.ClientSession, guild)
 	if event == nil {
 		log.Error("Error getting event after insert")
 		return false
@@ -346,7 +364,8 @@ func removeEvent(ctx *exrouter.Context) bool {
 		return false
 	}
 
-	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(ctx.Msg.GuildID, t.Unix())
+	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
+	referencedEvent, err := BotInstance.EventDao.GetEventByStartTime(ctx.Msg.GuildID, t.Unix(), guild)
 	if err != nil || referencedEvent == nil {
 		ctx.Reply("Could not find that event, please try again")
 		return false
@@ -427,7 +446,7 @@ func AuthEventRunner(ctx *exrouter.Context) bool {
 		ctx.Reply("Could not fetch member: ", err)
 		return false
 	}
-	eventRunnerRole, err := findRoleByName(ctx, BotInstance.EventRunnerRoleName)
+	eventRunnerRole, err := FindRoleByName(ctx.Msg.GuildID, BotInstance.EventRunnerRoleName)
 	if err != nil {
 		log.Error("Error getting role", err)
 	}
@@ -480,9 +499,10 @@ func GetNewFact() (string, string) {
 	return title, content
 }
 
-func findRoleByName(ctx *exrouter.Context, roleName string) (*discordgo.Role, error) {
+// FindRoleByName : Gets a role by name
+func FindRoleByName(guildID string, roleName string) (*discordgo.Role, error) {
 	var foundRole *discordgo.Role
-	guildRoles, _ := ctx.Ses.GuildRoles(ctx.Msg.GuildID)
+	guildRoles, _ := BotInstance.ClientSession.GuildRoles(guildID)
 	for _, r := range guildRoles {
 		if r.Name == roleName {
 			foundRole = r
@@ -542,33 +562,49 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Mess
 	var schedMsg *discordgo.Message
 	for _, msg := range msgHistory {
 		// Delete any extra schedules that may have been posted
-		if schedMsg != nil && !strings.Contains(schedMsg.Content, "@everyone") {
+		if schedMsg != nil && msg.Content != "@everyone" {
 			err = inst.ClientSession.ChannelMessageDelete(msg.ChannelID, msg.ID)
 			if err != nil {
 				log.Error("Error deleting message")
 			}
-		} else if msg.Author.ID == inst.ClientSession.State.User.ID {
+		} else if msg != nil && msg.Author.ID == inst.ClientSession.State.User.ID && msg.Content != "@everyone" {
 			schedMsg = msg
 		}
 	}
+	if schedMsg == nil {
+		return nil, nil
+	}
 	return schedMsg, nil
+}
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 // SendSchedule : Parses and sends the schedule message to a given channel
-func SendSchedule(schedChannelID string, guildID string, inst *bot.Instance) {
+func SendSchedule(schedChannelID string, guildID string, inst *bot.Instance, isFirstSchedOfWeek ...bool) {
+	log.Trace("Send sched fired")
 	schedMsg, err := GetSchedMessage(schedChannelID, inst)
 	if err != nil {
 		return
 	}
 
-	if schedMsg != nil && !strings.Contains(schedMsg.Content, "@everyone") {
+	if schedMsg != nil && schedMsg.Content != "@everyone" {
 		inst.ClientSession.ChannelMessageDelete(schedMsg.ChannelID, schedMsg.ID)
 	}
 
-	go takeAndSendTargeted(schedChannelID, guildID, inst)
+	firstSched := false
+	if len(isFirstSchedOfWeek) > 0 {
+		// firstSched = isFirstSchedOfWeek[0]
+	}
+	go takeAndSendTargeted(schedChannelID, guildID, inst, firstSched)
 }
 
-func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instance) {
+func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instance, isFirstSchedOfWeek bool) {
 	path, _ := os.Getwd()
 
 	var wg sync.WaitGroup
@@ -597,7 +633,13 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 		return
 	}
 
+	body := ""
+	if isFirstSchedOfWeek {
+		// BotInstance.ClientSession.ChannelMessageSend(schedChannelID, "@everyone")
+	}
+
 	msSched := &discordgo.MessageSend{
+		Content: body,
 		Files: []*discordgo.File{
 			&discordgo.File{
 				Name:   ScheduleFileName,
@@ -613,21 +655,21 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, msSched)
 	fFacts.Close()
 	fSched.Close()
-	go deleteFiles()
+	// deleteFiles()
 }
 
-func deleteFiles() {
-	err := os.Remove(ScheduleFileName)
-	if err != nil {
-		log.Error("Error deleting schedule", err)
-		return
-	}
-	err = os.Remove(TodayFileName)
-	if err != nil {
-		log.Error("Error deleting schedule banner", err)
-		return
-	}
-}
+// func deleteFiles() {
+// 	err := os.Remove(ScheduleFileName)
+// 	if err != nil {
+// 		log.Error("Error deleting schedule", err)
+// 		return
+// 	}
+// 	err = os.Remove(TodayFileName)
+// 	if err != nil {
+// 		log.Error("Error deleting schedule banner", err)
+// 		return
+// 	}
+// }
 
 func getMinutesOrHoursInRelationToClosestEvent(nearestEvent *domain.Event) string {
 	minutesUntilNext := time.Until(nearestEvent.StartTime)

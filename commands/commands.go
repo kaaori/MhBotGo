@@ -55,11 +55,93 @@ func InstallCommands(instance *bot.Instance) {
 	// 	ctx.Reply("Reply text here!")
 	// }).Desc("Descriptive text")
 
-	router.On("tss", func(ctx *exrouter.Context) {
-		ctx.Reply("Okay, sending a targeted screenshot~ Standby<3")
-		ParseTemplate(ctx.Msg.GuildID)
-		go takeAndSendTargeted(ctx.Msg.ChannelID, ctx.Msg.GuildID, BotInstance)
-	})
+	// router.On("tss", func(ctx *exrouter.Context) {
+	// 	if !AuthEventRunner(ctx) {
+	// 		return
+	// 	}
+	// 	ctx.Reply("Okay, sending a targeted screenshot~ Standby<3")
+	// 	ParseTemplate(ctx.Msg.GuildID)
+	// 	go takeAndSendTargeted(ctx.Msg.ChannelID, ctx.Msg.GuildID, BotInstance, false)
+	// })
+
+	// router.On("testweekly", func(ctx *exrouter.Context) {
+	// 	if !AuthEventRunner(ctx) {
+	// 		return
+	// 	}
+	// 	log.Info("Clearing schedules.")
+	// 	for _, g := range BotInstance.ClientSession.State.Guilds {
+
+	// 		schedChannel := FindSchedChannel(BotInstance, g.ID)
+	// 		if schedChannel == nil {
+	// 			log.Error("Couldn't find schedule channel")
+	// 			continue
+	// 		}
+
+	// 		if schedChannel != nil {
+	// 			msgs, err := BotInstance.ClientSession.ChannelMessages(schedChannel.ID, 100, "", "", "")
+	// 			if err != nil {
+	// 				log.Error("Couldn't find schedule channel messages")
+	// 				continue
+	// 			}
+
+	// 			// Delete all messages in schedule channel
+	// 			var msgIDsToDelete []string
+	// 			for _, msg := range msgs {
+
+	// 				msgIDsToDelete = append(msgIDsToDelete, msg.ID)
+
+	// 			}
+	// 			if len(msgIDsToDelete) > 0 {
+	// 				BotInstance.ClientSession.ChannelMessagesBulkDelete(schedChannel.ID, msgIDsToDelete)
+	// 				log.Trace("Cleared messages from schedule channel")
+	// 			} else {
+	// 				log.Trace("Could not find any messages")
+	// 			}
+	// 			ParseTemplate(g.ID)
+	// 			_, err = BotInstance.ClientSession.ChannelMessageSend("615706957873152032", "@everyone")
+	// 			if err != nil {
+	// 				log.Error("Error pinging everyone", err)
+	// 				return
+	// 			}
+	// 			SendSchedule(schedChannel.ID, g.ID, BotInstance)
+	// 		}
+	// 	}
+	// })
+
+	// router.On("testupd", func(ctx *exrouter.Context) {
+	// 	if !AuthEventRunner(ctx) {
+	// 		return
+	// 	}
+	// 	for _, g := range BotInstance.ClientSession.State.Guilds {
+	// 		schedChannel := FindSchedChannel(BotInstance, g.ID)
+	// 		if schedChannel == nil {
+	// 			log.Error("Couldn't find schedule channel")
+	// 			continue
+	// 		}
+
+	// 		SendSchedule(schedChannel.ID, g.ID, BotInstance)
+	// 	}
+	// })
+
+	// router.On("testfct", func(ctx *exrouter.Context) {
+	// 	if !AuthEventRunner(ctx) {
+	// 		return
+	// 	}
+	// 	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
+	// 	for _, g := range BotInstance.ClientSession.State.Guilds {
+
+	// 		schedChannel := FindSchedChannel(BotInstance, g.ID)
+	// 		if schedChannel == nil {
+	// 			log.Error("Couldn't find schedule channel")
+	// 			continue
+	// 		}
+
+	// 		if schedChannel != nil {
+	// 			ParseTemplate(g.ID)
+	// 			SendSchedule(schedChannel.ID, g.ID, BotInstance)
+	// 		}
+	// 	}
+	// })
 
 	router.Group(func(r *exrouter.Route) {
 		r.Cat("events")
@@ -92,17 +174,17 @@ func InstallCommands(instance *bot.Instance) {
 			}
 			go parseAndSendSched(ctx)
 		})
-		r.On("events", nil).On("clear", func(ctx *exrouter.Context) {
-			if !AuthEventRunner(ctx) {
-				return
-			}
-			err := BotInstance.EventDao.DeleteAllEventsForServer(ctx.Msg.GuildID)
-			if err != nil {
-				ctx.Reply("There was an error deleting all events ;-;")
-				return
-			}
-			ctx.Reply("Ok! All events for this server have been cleared")
-		})
+		// r.On("events", nil).On("clear", func(ctx *exrouter.Context) {
+		// 	if !AuthEventRunner(ctx) {
+		// 		return
+		// 	}
+		// 	err := BotInstance.EventDao.DeleteAllEventsForServer(ctx.Msg.GuildID)
+		// 	if err != nil {
+		// 		ctx.Reply("There was an error deleting all events ;-;")
+		// 		return
+		// 	}
+		// 	ctx.Reply("Ok! All events for this server have been cleared")
+		// })
 	})
 
 	router.On("servertime", func(ctx *exrouter.Context) {

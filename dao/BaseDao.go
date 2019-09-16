@@ -10,7 +10,7 @@ func queryForRows(query string, db *sqlite3.Conn, args ...interface{}) (*sqlite3
 
 	stmt, err := db.Prepare(query, args...)
 	if err != nil {
-		// stmt.Close()
+		stmt.Close()
 		log.Error("Error querying: ", err)
 		return nil, err
 	}

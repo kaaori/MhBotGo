@@ -8,11 +8,9 @@ import (
 
 // Instance : The current instance of the bot and its session
 type Instance struct {
-	ClientSession     *discordgo.Session
-	ServerDao         dao.DiscordServerDao
-	EventDao          dao.EventDao
-	EventAttendeeRole *discordgo.Role
-	EventRunnerRole   *discordgo.Role
+	ClientSession *discordgo.Session
+	ServerDao     dao.DiscordServerDao
+	EventDao      dao.EventDao
 
 	AnnouncementChannel       string
 	ScheduleChannel           string

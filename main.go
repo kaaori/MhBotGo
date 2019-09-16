@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"syscall"
 
-	"github.com/kaaori/MhBotGo/dao"
-
 	"github.com/kaaori/MhBotGo/scheduler"
 
 	"github.com/fsnotify/fsnotify"
@@ -74,9 +72,8 @@ func initDbForGuild(guild *discordgo.GuildCreate) {
 func main() {
 	initViper("./configs/config.json")
 	log.Info("======================/ MH Bot Starting \\======================")
-	log.Info("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
+	// log.Info("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
 
-	log.Info("Db opened...")
 	if _, err := os.Stat(config.GetString("dbLocation")); err != nil {
 		log.Error("DB Not found. Creating in " + config.GetString("dbLocation"))
 		bot.ReadDML(config.GetString("dbLocation"))
@@ -99,7 +96,7 @@ func main() {
 	}
 	// Defer the session cleanup until the application is closed
 	defer BotInstance.ClientSession.Close()
-	defer dao.DB.Close()
+	// defer dao.DB.Close()
 	scheduler.Init(BotInstance)
 
 	// Wait here until CTRL-C or other term signal is received.

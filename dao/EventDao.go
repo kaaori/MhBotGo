@@ -1,12 +1,12 @@
 package dao
 
 import (
-	"errors"
 	"time"
 
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kaaori/MhBotGo/domain"
+	"github.com/kaaori/MhBotGo/profiler"
 	"github.com/kaaori/MhBotGo/util"
 )
 
@@ -17,6 +17,9 @@ type EventDao struct {
 
 // DeleteAllEventsForServer : Nukes everything for a server
 func (d *EventDao) DeleteAllEventsForServer(serverID string) error {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "delete from Events where ServerID = ?"
 
 	stmt, err := queryForRows(query, DB, serverID)
@@ -30,19 +33,24 @@ func (d *EventDao) DeleteAllEventsForServer(serverID string) error {
 }
 
 // GetAllEventsForServerForWeek : Gets a server's events within a week range
-func (d *EventDao) GetAllEventsForServerForWeek(serverID string, weekTime time.Time) ([]*domain.Event, error) {
+func (d *EventDao) GetAllEventsForServerForWeek(serverID string, weekTime time.Time, g *discordgo.Guild) ([]*domain.Event, error) {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select * from Events where ServerID = ? and StartTimestamp between ? AND ?"
 
+	profiler.Start()
 	stmt, err := queryForRows(query, DB, serverID, weekTime.Unix(), weekTime.AddDate(0, 0, 7).Unix())
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
+	profiler.StopAndPrintSeconds("Querying for rows")
 
-	return processStmtForEventArray(stmt, d)
+	return processStmtForEventArray(stmt, d, g)
 }
 
-func getEventFromStmt(stmt *sqlite3.Stmt, d *EventDao) (*domain.Event, error) {
+func getEventFromStmt(stmt *sqlite3.Stmt, d *EventDao, g *discordgo.Guild) (*domain.Event, error) {
 	hasRow, err := stmt.Step()
 	if err != nil {
 		return nil, err
@@ -51,7 +59,7 @@ func getEventFromStmt(stmt *sqlite3.Stmt, d *EventDao) (*domain.Event, error) {
 	if !hasRow {
 		return nil, nil
 	}
-	event, err := mapRowToEvent(stmt, d.Session)
+	event, err := mapRowToEvent(stmt, d.Session, g)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +68,9 @@ func getEventFromStmt(stmt *sqlite3.Stmt, d *EventDao) (*domain.Event, error) {
 
 // GetEventsCountForServerForWeek : Gets the # of a server's events within a week range
 func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time.Time) int {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select Count(*) cnt from Events where ServerID = ? and StartTimestamp between ? AND ?"
 	// -2*3600 for 2 hr buffer between midnight & an events start
 	stmt, err := queryForRows(query, DB, serverID, weekTime.Unix()+util.ServerLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()+util.ServerLocOffset+(2*3600))
@@ -73,6 +84,9 @@ func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time
 
 // GetEventsCountForWeek : Gets the # of all events within a week range
 func (d *EventDao) GetEventsCountForWeek(weekTime time.Time) int {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select Count(*) from Events ORDER by (julianday(DATETIME('NOW')) - julianday(StartTimestamp)) desc LIMIT 1;"
 	// -2*3600 for 2 hr buffer between midnight & an events start
 	stmt, err := queryForRows(query, DB)
@@ -86,6 +100,9 @@ func (d *EventDao) GetEventsCountForWeek(weekTime time.Time) int {
 
 // GetAllEventCounts : Get a count of all events globally
 func (d *EventDao) GetAllEventCounts() int {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select Count(*) from Events"
 
 	stmt, err := queryForRows(query, DB)
@@ -99,6 +116,9 @@ func (d *EventDao) GetAllEventCounts() int {
 
 // GetEventCountForServer : Gets the total count of events for a server
 func (d *EventDao) GetEventCountForServer(serverID string) int {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select Count(*) from Events where ServerID = ?"
 
 	stmt, err := queryForRows(query, DB, serverID)
@@ -111,7 +131,10 @@ func (d *EventDao) GetEventCountForServer(serverID string) int {
 }
 
 // GetAllEventsForServer : Gets all the events by a given server ID
-func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, error) {
+func (d *EventDao) GetAllEventsForServer(serverID string, g *discordgo.Guild) ([]*domain.Event, error) {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select * from Events where ServerID = ?"
 	stmt, err := queryForRows(query, DB, serverID)
 	if err != nil {
@@ -119,14 +142,15 @@ func (d *EventDao) GetAllEventsForServer(serverID string) ([]*domain.Event, erro
 	}
 	defer stmt.Close()
 
-	return processStmtForEventArray(stmt, d)
+	return processStmtForEventArray(stmt, d, g)
 }
 
 // GetNextEventOrDefault : Gets the next occuring event or nil
-func (d *EventDao) GetNextEventOrDefault(guildID string) (*domain.Event, error) {
-	// unixNowInLoc := time.Now().Unix() - util.ServerLocOffset
+func (d *EventDao) GetNextEventOrDefault(guildID string, g *discordgo.Guild) (*domain.Event, error) {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select * from Events where ServerID = ? ORDER by abs(StartTimestamp- strftime('%s', 'now') ) limit 1"
-	// query := "select * from Events where ServerID = ? and StartTimestamp < ? order by StartTimestamp desc"
 
 	stmt, err := queryForRows(query, DB, guildID)
 	if err != nil {
@@ -134,11 +158,14 @@ func (d *EventDao) GetNextEventOrDefault(guildID string) (*domain.Event, error) 
 	}
 	defer stmt.Close()
 
-	return processStmtForEvent(stmt, d)
+	return processStmtForEvent(stmt, d, g)
 }
 
 // GetEventByID : Gets an event by its ID
-func (d *EventDao) GetEventByID(ID string) (*domain.Event, error) {
+func (d *EventDao) GetEventByID(ID string, g *discordgo.Guild, u *discordgo.User) (*domain.Event, error) {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select * from Events where EventID = ?"
 	stmt, err := queryForRows(query, DB, ID)
 	if err != nil {
@@ -146,11 +173,14 @@ func (d *EventDao) GetEventByID(ID string) (*domain.Event, error) {
 	}
 	defer stmt.Close()
 
-	return getEventFromStmt(stmt, d)
+	return getEventFromStmt(stmt, d, g)
 }
 
 // GetEventByStartTime : Gets an event by its start time and server
-func (d *EventDao) GetEventByStartTime(guildID string, startTime int64) (*domain.Event, error) {
+func (d *EventDao) GetEventByStartTime(guildID string, startTime int64, g *discordgo.Guild) (*domain.Event, error) {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select * from Events where StartTimestamp = ? and ServerID = ? limit 1"
 
 	stmt, err := queryForRows(query, DB, startTime, guildID)
@@ -159,13 +189,16 @@ func (d *EventDao) GetEventByStartTime(guildID string, startTime int64) (*domain
 	}
 	defer stmt.Close()
 
-	return getEventFromStmt(stmt, d)
+	return getEventFromStmt(stmt, d, g)
 }
 
 // UpdateEvent : Updates an event by object
 // Returns ID of new event
 // We need to offset the last announcement timestamp, as the rest will already have been offset upon insert
 func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "UPDATE Events " +
 		"	SET " +
 		"		ServerID = ?," +
@@ -197,6 +230,9 @@ func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
 // DeleteEventByID : Deletes an event by ID
 // Returns ID of deleted event
 func (d *EventDao) DeleteEventByID(ID int64) int64 {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := `	DELETE FROM Events  
 				WHERE EventID = ?`
 
@@ -213,6 +249,9 @@ func (d *EventDao) DeleteEventByID(ID int64) int64 {
 // DeleteEventByStartTime : Deletes an event by given start time
 // Returns ID of deleted event
 func (d *EventDao) DeleteEventByStartTime(startTime int64) int64 {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := `	DELETE FROM Events  
 				WHERE StartTimestamp = ?`
 
@@ -230,6 +269,9 @@ func (d *EventDao) DeleteEventByStartTime(startTime int64) int64 {
 // DeleteEventByStartTimeAndHost : Deletes an event by given start time and host
 // Returns ID of deleted event
 func (d *EventDao) DeleteEventByStartTimeAndHost(startTime int64, hostName string) int64 {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := `	DELETE FROM Events  
 				WHERE StartTimestamp = ? 
 				AND   HostName = ?`
@@ -246,7 +288,9 @@ func (d *EventDao) DeleteEventByStartTimeAndHost(startTime int64, hostName strin
 }
 
 // InsertEvent : Insert a new event
-func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session) *domain.Event {
+func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session, g *discordgo.Guild) *domain.Event {
+	DB := GetConnection()
+	defer DB.Close()
 
 	query := `INSERT INTO Events 
 	(ServerID, CreatorID, EventName, EventLocation, HostName, CreationTimestamp, StartTimestamp, LastAnnouncementTimestamp, DurationMinutes) 
@@ -268,7 +312,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session) *domai
 		return nil
 	}
 
-	event, err = mapORMFields(event, s)
+	event, err = mapORMFields(event, s, g)
 	if err != nil {
 		log.Error("Error mapping ORM fields in new event", err)
 		return nil
@@ -278,7 +322,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session) *domai
 	return event
 }
 
-func mapRowToEvent(rows *sqlite3.Stmt, s *discordgo.Session) (*domain.Event, error) {
+func mapRowToEvent(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild) (*domain.Event, error) {
 	event := new(domain.Event)
 
 	err := rows.Scan(
@@ -295,29 +339,22 @@ func mapRowToEvent(rows *sqlite3.Stmt, s *discordgo.Session) (*domain.Event, err
 	if err != nil {
 		return nil, err
 	}
+	profiler.Start()
 
-	event, err = mapORMFields(event, s)
+	event, err = mapORMFields(event, s, g)
 	if err != nil {
 		log.Error("Error mapping ORM Fields in event", err)
 		return nil, err
 	}
+	profiler.StopAndPrintSeconds("Mapping ORM fields")
 	return event, err
 }
 
-func mapORMFields(event *domain.Event, s *discordgo.Session) (*domain.Event, error) {
-	guild, err := s.State.Guild(event.ServerID)
-	if err != nil {
-		log.Error("Could not find guild")
-		return event, err
-	}
-	event.Server = domain.DiscordServer{Guild: guild, ServerID: guild.ID}
+func mapORMFields(event *domain.Event, s *discordgo.Session, g *discordgo.Guild) (*domain.Event, error) {
 
-	creator, err := s.User(event.CreatorID)
-	if err != nil {
-		log.Error("Could not find user")
-		return event, err
-	}
-	event.Creator = creator
+	event.Server = domain.DiscordServer{Guild: g, ServerID: g.ID}
+
+	// event.Creator = creator
 
 	event.CreationTime = time.Unix(event.CreationTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
 	event.StartTime = time.Unix(event.StartTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
@@ -329,7 +366,8 @@ func mapORMFields(event *domain.Event, s *discordgo.Session) (*domain.Event, err
 	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.ServerLoc)
 	event.TzOffset = util.ServerLocOffset
 	event.TzLoc = util.ServerLoc
-	return event, err
+
+	return event, nil
 }
 
 func getCountFromStmt(stmt *sqlite3.Stmt) int {
@@ -350,10 +388,10 @@ func getCountFromStmt(stmt *sqlite3.Stmt) int {
 	return count
 }
 
-func processStmtForEventArray(stmt *sqlite3.Stmt, d *EventDao) ([]*domain.Event, error) {
+func processStmtForEventArray(stmt *sqlite3.Stmt, d *EventDao, g *discordgo.Guild) ([]*domain.Event, error) {
 	events := make([]*domain.Event, 0)
 	for {
-		event, err := getEventFromStmt(stmt, d)
+		event, err := getEventFromStmt(stmt, d, g)
 		if err != nil {
 			return nil, err
 		}
@@ -362,14 +400,14 @@ func processStmtForEventArray(stmt *sqlite3.Stmt, d *EventDao) ([]*domain.Event,
 		} else if len(events) > 0 {
 			break
 		} else {
-			return nil, errors.New("Couldn't find event")
+			return nil, nil // errors.New("Couldn't find event")
 		}
 	}
 	return events, nil
 }
 
-func processStmtForEvent(stmt *sqlite3.Stmt, d *EventDao) (*domain.Event, error) {
-	event, err := getEventFromStmt(stmt, d)
+func processStmtForEvent(stmt *sqlite3.Stmt, d *EventDao, g *discordgo.Guild) (*domain.Event, error) {
+	event, err := getEventFromStmt(stmt, d, g)
 	if err != nil {
 		stmt.Close()
 		return nil, err

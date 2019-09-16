@@ -12,19 +12,16 @@ import (
 var (
 	log = logging.NewLog()
 	// DB : The current DB session
-	DB *sqlite3.Conn
+	// DB *sqlite3.Conn
 )
 
-func init() {
-	log.Info("Initialising DB...")
-	db, err := sqlite3.Open("./data/MHBot.db")
-	// db.SetMaxOpenConns(1)
-	// db.SetConnMaxLifetime(0)
+// GetConnection : Gets a MHBot DB connection
+func GetConnection() *sqlite3.Conn {
+	DB, err := sqlite3.Open("file:./data/MHBot.db?cache=shared&mode=rwc")
 	if err != nil {
 		log.Error("Error Getting DB connection", err)
 		panic("Error connecting to sqlite")
 	}
-	db.BusyTimeout(3 * time.Second)
-	DB = db
-	log.Info("DB Opened!")
+	DB.BusyTimeout(300 * time.Millisecond)
+	return DB
 }

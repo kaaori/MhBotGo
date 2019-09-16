@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	log = logging.NewLog()
+	log                = logging.NewLog()
+	GuildsWithNoEvents = make([]string, 0)
 )
 
 // Scheduler : The scheduler process for the bot
@@ -25,7 +26,7 @@ func Init(inst *bot.Instance) {
 	log.Info("Scheduler tasks starting.")
 
 	// Check birthdays here as well
-	gocron.Every(1).Monday().At("12:00").Do(weeklyEvents, inst)
+	gocron.Every(1).Monday().At("12:00").Do(WeeklyEvents, inst)
 
 	gocron.Every(1).Day().At("00:30").Do(UpdateFact, inst)
 	gocron.Every(1).Day().At("2:00").Do(UpdateSchedule, inst)
@@ -68,7 +69,7 @@ func UpdateSchedule(inst *bot.Instance) {
 	}
 }
 
-func weeklyEvents(inst *bot.Instance) {
+func WeeklyEvents(inst *bot.Instance) {
 	ClearSchedulesAndMakeEveryoneMad(inst)
 }
 
@@ -94,10 +95,6 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 		}
 
 		if schedChannel != nil {
-			// Ping all IDs is held only in memory so may miss pings if
-			// the bot proves to be unstable.
-			// If this is the case move to DB table or config
-
 			msgs, err := inst.ClientSession.ChannelMessages(schedChannel.ID, 100, "", "", "")
 			if err != nil {
 				log.Error("Couldn't find schedule channel messages")
@@ -107,17 +104,17 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 			// Delete all messages in schedule channel
 			var msgIDsToDelete []string
 			for _, msg := range msgs {
-				log.Info("Msg: ")
 				msgIDsToDelete = append(msgIDsToDelete, msg.ID)
 			}
 			if len(msgIDsToDelete) > 0 {
 				inst.ClientSession.ChannelMessagesBulkDelete(schedChannel.ID, msgIDsToDelete)
+				log.Trace("Cleared messages from schedule channel")
 			} else {
 				log.Trace("Could not find any messages")
 			}
 			commands.ParseTemplate(g.ID)
 			PingEveryoneInScheduleChannel(schedChannel.GuildID, schedChannel.ID, inst.ClientSession)
-			commands.SendSchedule(schedChannel.ID, g.ID, inst)
+			commands.SendSchedule(schedChannel.ID, g.ID, inst, true)
 		}
 	}
 }
@@ -125,12 +122,24 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 // UpdateFact : Updates the fact of the day from an RSS feed
 func UpdateFact(inst *bot.Instance) {
 	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact()
+	for _, g := range inst.ClientSession.State.Guilds {
+
+		schedChannel := commands.FindSchedChannel(inst, g.ID)
+		if schedChannel == nil {
+			log.Error("Couldn't find schedule channel")
+			continue
+		}
+
+		if schedChannel != nil {
+			commands.ParseTemplate(g.ID)
+			commands.SendSchedule(schedChannel.ID, g.ID, inst)
+		}
+	}
 }
 
 // Runs every 10 seconds
 func checkEvents(t time.Time, inst *bot.Instance) {
 	for _, g := range inst.ClientSession.State.Guilds {
-
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
 			log.Error("Couldn't find schedule channel")
@@ -144,10 +153,19 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 		}
 
 		weekTime := util.GetCurrentWeekFromMondayAsTime()
-		evts, err := inst.EventDao.GetAllEventsForServerForWeek(g.ID, weekTime)
-		if err != nil {
+		evts, err := inst.EventDao.GetAllEventsForServerForWeek(g.ID, weekTime, g)
+		if err != nil && err.Error() != "Couldn't find event" {
 			log.Error("Error fetching events for guild "+g.Name, err)
 			continue
+		}
+
+		if len(evts) <= 0 && !contains(GuildsWithNoEvents, g.ID) {
+			GuildsWithNoEvents = append(GuildsWithNoEvents, g.ID)
+			commands.ParseTemplate(g.ID)
+			go commands.SendSchedule(schedChannel.ID, g.ID, inst)
+			continue
+		} else if len(evts) > 0 && !contains(GuildsWithNoEvents, g.ID) {
+			GuildsWithNoEvents = remove(GuildsWithNoEvents, g.ID)
 		}
 
 		for _, evt := range evts {
@@ -159,7 +177,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 				log.Error("Could not find announcement channel")
 				break
 			}
-			var announcement string
+			announcement := ""
 			body := ""
 			content := ""
 
@@ -182,7 +200,12 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 				commands.ParseTemplate(g.ID)
 				go commands.SendSchedule(schedChannel.ID, evt.ServerID, inst)
 				go bot.CycleEventParamsAsStatus(evt, inst)
-				content = "Ping event attendees role goes here~"
+				role, err := commands.FindRoleByName(g.ID, inst.EventAttendeeRoleName)
+				if err != nil {
+					log.Error("Could not find attendee role")
+				} else {
+					content = role.Mention()
+				}
 				evt.LastAnnouncementTimestamp = 2
 			} else {
 				continue
@@ -192,8 +215,27 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			msg := &discordgo.MessageSend{
 				Embed:   commands.GetAnnounceEmbedFromEvent(evt, body, announcement),
 				Content: content}
-			inst.ClientSession.ChannelMessageSendComplex(announcementChannel.ID, msg)
 			log.Trace("Updated event " + evt.EventName)
+
+			go inst.ClientSession.ChannelMessageSendComplex(announcementChannel.ID, msg)
 		}
 	}
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func remove(s []string, r string) []string {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
 }

@@ -17,12 +17,18 @@ type DiscordServerDao struct {
 
 // GetServerByID : Gets a guild by its ID
 func (d *DiscordServerDao) GetServerByID(ID string) (*domain.DiscordServer, error) {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select * from Servers where ServerID = ?"
 	// server := new(domain.DiscordSer  ver)
 
 	stmt, err := queryForRows(query, DB, ID)
 	if err != nil {
 		return nil, err
+	}
+	if stmt == nil {
+		return nil, errors.New("statement was closed")
 	}
 	defer stmt.Close()
 
@@ -36,6 +42,9 @@ func (d *DiscordServerDao) GetServerByID(ID string) (*domain.DiscordServer, erro
 
 // GetAllServers : Gets all the servers in the database
 func (d *DiscordServerDao) GetAllServers() ([]*domain.DiscordServer, error) {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "select * from Servers"
 	servers := make([]*domain.DiscordServer, 0)
 
@@ -65,6 +74,9 @@ func (d *DiscordServerDao) GetAllServers() ([]*domain.DiscordServer, error) {
 
 // InsertNewServer : Sets up the initial data for a guild
 func (d *DiscordServerDao) InsertNewServer(serverID string) int64 {
+	DB := GetConnection()
+	defer DB.Close()
+
 	query := "insert into Servers (ServerID, JoinTimeUnix) values (?,?)"
 	stmt, err := DB.Prepare(query)
 	if err != nil {
@@ -86,7 +98,6 @@ func mapRowToServer(rows *sqlite3.Stmt, s *discordgo.Session) (domain.DiscordSer
 	if err != nil {
 		return server, err
 	}
-	// server.Guild = s.Guild(server.ServerID)
 	server.Guild, err = s.State.Guild(server.ServerID)
 	if err != nil {
 		log.Error("Error finding guild: ", err)

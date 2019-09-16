@@ -1,11 +1,10 @@
 package domain
 
 import (
+	"regexp"
 	"time"
 
 	strip "github.com/grokify/html-strip-tags-go"
-
-	"github.com/bwmarrin/discordgo"
 )
 
 // Event : The model for the Events table
@@ -24,7 +23,6 @@ type Event struct {
 	TzLoc                     *time.Location
 
 	// ORM Fields
-	Creator              *discordgo.User
 	Server               DiscordServer
 	CreationTime         time.Time
 	StartTime            time.Time
@@ -34,9 +32,10 @@ type Event struct {
 
 // ToString : Provides a pretty-print string for the event
 func (e *Event) ToString() string {
+	emojiRegex := regexp.MustCompile("<(a)?:.*?:(.*?)>")
 	return "<strong><em>" + e.StartTime.Format(time.Kitchen) +
-		" - " + e.EventName +
-		"</strong></em> (Hosted  by <strong><em>" + strip.StripTags(e.HostName) + "</em></strong> in " + strip.StripTags(e.EventLocation) + ")"
+		" - " + strip.StripTags(emojiRegex.ReplaceAllString(e.EventName, "")) +
+		"</strong></em> (Hosted  by <strong><em>" + strip.StripTags(emojiRegex.ReplaceAllString(e.HostName, "")) + "</em></strong> in " + strip.StripTags(emojiRegex.ReplaceAllString(e.EventLocation, "")) + ")"
 }
 
 // ToEmbedString : Provides a pretty-print string for the event in a discord embed
