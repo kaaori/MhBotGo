@@ -619,12 +619,13 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	scheduleFileName := "schedule" + guildID + ".png"
 	todayFileName := "today" + guildID + ".png"
 
-	isTargetedScreenshot := config.GetBool("isTargetedScreenshotStrategy")
+	isScheduleTargeted := config.GetBool("isScheduleTargeted")
+	isTodayTargeted := config.GetBool("isTodayTargeted")
 
-	go chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH, "#main", scheduleFileName, "file:///"+path+"/web/schedule-parsed"+guildID+".html", isTargetedScreenshot, &wg)
+	go chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH, "#main", scheduleFileName, "file:///"+path+"/web/schedule-parsed"+guildID+".html", isScheduleTargeted, &wg)
 
 	// For some reason the non-targeted screenshot will add ~300px extra margin to the bottom, so take a targeted screenshot instead
-	go chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH, "#today", todayFileName, "file:///"+path+"/web/today-parsed"+guildID+".html", true, &wg)
+	go chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH, "#today", todayFileName, "file:///"+path+"/web/today-parsed"+guildID+".html", isTodayTargeted, &wg)
 
 	// Wait for both screenshots to be finished
 	wg.Wait()

@@ -12,5 +12,6 @@
     ],
     "eventRunnerRole": "Event Runner",
     "eventAttendeeRole": "Event Attendees",
-    "isTargetedScreenshotStrategy": "false"
+    "isTodayTargeted": true,
+    "isScheduleTargeted": false
 }
