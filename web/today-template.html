@@ -28,7 +28,7 @@
                 <ul class="today-events list-group">
 
                     {{ $length := len .CurrentDay }} {{ if eq $length 0 }}
-                    <p class="no-events">No events have been planned yet for today!<br />Be the first!</p>
+                    <p class="no-events">No events have been planned <b>for today</b>!<br />Be the first!</p>
                     {{else}}
                     {{range .CurrentDay}}
                     {{if .HasPassed}}
