@@ -23,14 +23,15 @@ import (
 	"github.com/kaaori/MhBotGo/util"
 	"github.com/mmcdole/gofeed"
 	"github.com/snabb/isoweek"
+	config "github.com/spf13/viper"
 )
 
 var (
 	// ScheduleFileName : Name of schedule image
-	ScheduleFileName = "schedule.png"
+	ScheduleFileName = "schedule"
 
 	// TodayFileName : The day's event image
-	TodayFileName = "today.png"
+	TodayFileName = "today"
 )
 
 // MemberHasPermission : Checks if the member has a given perm
@@ -78,13 +79,13 @@ func ParseTemplate(guildID string) {
 
 	profiler.Start()
 	g, _ := BotInstance.ClientSession.Guild(guildID)
-	fSched, err := os.Create("./web/schedule-parsed.html")
+	fSched, err := os.Create("./web/schedule-parsed" + guildID + ".html")
 	if err != nil {
 		log.Error("create file: ", err)
 		return
 	}
 
-	fToday, err := os.Create("./web/today-parsed.html")
+	fToday, err := os.Create("./web/today-parsed" + guildID + ".html")
 	if err != nil {
 		fSched.Close()
 		log.Error("create file: ", err)
@@ -279,7 +280,10 @@ func appendEventToList(targetList []*domain.EventView, e *domain.Event) []*domai
 		PrettyPrint:    e.ToString(),
 		StartTimestamp: e.StartTimestamp,
 		HasPassed:      time.Now().In(util.ServerLoc).After(e.StartTime),
-		DayOfWeek:      e.StartTime.Weekday().String()})
+		DayOfWeek:      e.StartTime.Weekday().String(),
+		HostName:       e.HostName,
+		HostLocation:   e.EventLocation,
+		EventName:      e.EventName})
 }
 
 // TODO: check if another refresh is in progress?
@@ -612,21 +616,27 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	// Add our two screenshots to the wait group
 	wg.Add(2)
 
-	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#main", ScheduleFileName, "file:///"+path+"/web/schedule-parsed.html", &wg)
+	scheduleFileName := "schedule" + guildID + ".png"
+	todayFileName := "today" + guildID + ".png"
 
-	go chrome.TakeScreenshotTargeted(defaultScreenshotW, defaultScreenshotH, "#today", TodayFileName, "file:///"+path+"/web/today-parsed.html", &wg)
+	isTargetedScreenshot := config.GetBool("isTargetedScreenshotStrategy")
+
+	go chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH, "#main", scheduleFileName, "file:///"+path+"/web/schedule-parsed"+guildID+".html", isTargetedScreenshot, &wg)
+
+	// For some reason the non-targeted screenshot will add ~300px extra margin to the bottom, so take a targeted screenshot instead
+	go chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH, "#today", todayFileName, "file:///"+path+"/web/today-parsed"+guildID+".html", true, &wg)
 
 	// Wait for both screenshots to be finished
 	wg.Wait()
 
-	fSched, err := os.Open(TodayFileName)
+	fSched, err := os.Open(scheduleFileName)
 	if err != nil {
 		log.Error("Error getting schedule banner", err)
 		fSched.Close()
 		return
 	}
 
-	fFacts, err := os.Open(ScheduleFileName)
+	fFacts, err := os.Open(todayFileName)
 	if err != nil {
 		log.Error("Error getting schedule banner", err)
 		fFacts.Close()
@@ -642,11 +652,11 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 		Content: body,
 		Files: []*discordgo.File{
 			&discordgo.File{
-				Name:   ScheduleFileName,
+				Name:   scheduleFileName,
 				Reader: fSched,
 			},
 			&discordgo.File{
-				Name:   TodayFileName,
+				Name:   todayFileName,
 				Reader: fFacts,
 			},
 		},
@@ -655,21 +665,24 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, msSched)
 	fFacts.Close()
 	fSched.Close()
-	// deleteFiles()
+
+	deleteFiles(guildID)
 }
 
-// func deleteFiles() {
-// 	err := os.Remove(ScheduleFileName)
-// 	if err != nil {
-// 		log.Error("Error deleting schedule", err)
-// 		return
-// 	}
-// 	err = os.Remove(TodayFileName)
-// 	if err != nil {
-// 		log.Error("Error deleting schedule banner", err)
-// 		return
-// 	}
-// }
+func deleteFiles(guildID string) {
+	scheduleFileName := "schedule" + guildID + ".png"
+	todayFileName := "today" + guildID + ".png"
+	err := os.Remove(scheduleFileName)
+	if err != nil {
+		log.Error("Error deleting schedule", err)
+		// return
+	}
+	err = os.Remove(todayFileName)
+	if err != nil {
+		log.Error("Error deleting schedule banner", err)
+		// return
+	}
+}
 
 func getMinutesOrHoursInRelationToClosestEvent(nearestEvent *domain.Event) string {
 	minutesUntilNext := time.Until(nearestEvent.StartTime)

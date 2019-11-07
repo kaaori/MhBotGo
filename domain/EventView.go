@@ -6,4 +6,7 @@ type EventView struct {
 	StartTimestamp int64
 	HasPassed      bool
 	DayOfWeek      string
+	HostName       string
+	HostLocation   string
+	EventName      string
 }

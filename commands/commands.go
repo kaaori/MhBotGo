@@ -123,25 +123,13 @@ func InstallCommands(instance *bot.Instance) {
 	// 	}
 	// })
 
-	// router.On("testfct", func(ctx *exrouter.Context) {
-	// 	if !AuthEventRunner(ctx) {
-	// 		return
-	// 	}
-	// 	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
-	// 	for _, g := range BotInstance.ClientSession.State.Guilds {
-
-	// 		schedChannel := FindSchedChannel(BotInstance, g.ID)
-	// 		if schedChannel == nil {
-	// 			log.Error("Couldn't find schedule channel")
-	// 			continue
-	// 		}
-
-	// 		if schedChannel != nil {
-	// 			ParseTemplate(g.ID)
-	// 			SendSchedule(schedChannel.ID, g.ID, BotInstance)
-	// 		}
-	// 	}
-	// })
+	router.On("refresh", nil).On("fact", func(ctx *exrouter.Context) {
+		if !AuthEventRunner(ctx) {
+			return
+		}
+		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
+		ctx.Reply("Ok, fact has been updated if a newer one is available <3")
+	})
 
 	router.Group(func(r *exrouter.Route) {
 		r.Cat("events")
@@ -172,7 +160,8 @@ func InstallCommands(instance *bot.Instance) {
 			if !AuthEventRunner(ctx) {
 				return
 			}
-			go parseAndSendSched(ctx)
+			parseAndSendSched(ctx)
+			ctx.Reply("Ok, I have refreshed the curent schedule<3 | Server-time: " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 		})
 		// r.On("events", nil).On("clear", func(ctx *exrouter.Context) {
 		// 	if !AuthEventRunner(ctx) {
