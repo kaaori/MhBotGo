@@ -412,6 +412,10 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 		ctx.Reply("Please ensure you have given the event a location")
 		return false
 	}
+	// If our event is outside of the current week period, dont refresh the schedule
+	if event.StartTime.After(util.GetCurrentWeekFromMondayAsTime()) {
+		return false
+	}
 	return true
 }
 
