@@ -20,7 +20,7 @@ import (
 	"github.com/kaaori/MhBotGo/chrome"
 	"github.com/kaaori/MhBotGo/domain"
 	"github.com/kaaori/MhBotGo/profiler"
-	"github.com/kaaori/MhBotGo/util"
+	util "github.com/kaaori/MhBotGo/util"
 	"github.com/mmcdole/gofeed"
 	"github.com/snabb/isoweek"
 	config "github.com/spf13/viper"
@@ -354,6 +354,11 @@ func addEvent(ctx *exrouter.Context) bool {
 
 	embed := GetEmbedFromEvent(event, "scheduled for ")
 	BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
+
+	// If our event is outside of the current week period, dont refresh the schedule
+	if event.StartTime.After(util.GetCurrentWeekFromMondayAsTime()) {
+		return false
+	}
 	return true
 }
 
@@ -490,7 +495,7 @@ func GetNewFact() (string, string) {
 
 	//build request
 	fp := gofeed.NewParser()
-	feed, _ := fp.ParseURL("https://unbelievablefactsblog.com/rss#_=_")
+	feed, _ := fp.ParseURL(config.GetString("RssLink"))
 
 	if len(feed.Items) <= 0 {
 		//error shit
