@@ -11,6 +11,7 @@ type Instance struct {
 	ClientSession *discordgo.Session
 	ServerDao     dao.DiscordServerDao
 	EventDao      dao.EventDao
+	BirthdayDao   dao.BirthdayDao
 
 	AnnouncementChannel       string
 	ScheduleChannel           string
@@ -37,6 +38,7 @@ func InitBot(token string, dbLocation string) *Instance {
 	inst.ClientSession = discord
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}
 	inst.EventDao = dao.EventDao{Session: inst.ClientSession}
+	inst.BirthdayDao = dao.BirthdayDao{Session: inst.ClientSession}
 	inst.HasClearedSchedule = false
 	inst.EventRunnerRoleName = viper.GetString("eventRunnerRole")
 	inst.EventAttendeeRoleName = viper.GetString("eventAttendeeRole")

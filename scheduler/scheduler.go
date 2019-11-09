@@ -30,6 +30,7 @@ func Init(inst *bot.Instance) {
 
 	gocron.Every(1).Day().At("00:30").Do(UpdateFact, inst)
 	gocron.Every(1).Day().At("2:00").Do(UpdateSchedule, inst)
+	// gocron.Every(1).Day().At("10:00").Do(UpdateBirthday, inst)
 	gocron.Start()
 
 	go procEventLoop(inst)

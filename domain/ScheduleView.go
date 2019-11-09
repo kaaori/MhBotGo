@@ -10,4 +10,5 @@ type ScheduleView struct {
 	CurrentDayString  string
 	Week              *WeekView
 	CurrentDay        []*EventView
+	CurrentBirthdays  []*BirthdayView
 }

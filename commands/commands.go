@@ -63,21 +63,20 @@ func InstallCommands(instance *bot.Instance) {
 		ctx.Reply("Ok, fact has been updated if a newer one is available <3")
 	})
 
-	// router.Group(func(r *exrouter.Route) {
-	// 	r.Cat("birthdays")
+	router.Group(func(r *exrouter.Route) {
+		r.Cat("birthdays")
 
-	// 	r.On("birthday", nil).
-	// 		On("set", func(ctx *exrouter.Context) {
-	// 			// if (setBirthday(ctx)) {
-
-	// 			// }
-	// 			ctx.Reply("Test set")
-	// 		})
-	// 	r.On("birthday", nil).
-	// 		On("reset", func(ctx *exrouter.Context) {
-	// 			ctx.Reply("Test reset")
-	// 		})
-	// })
+		r.On("birthday", nil).
+			On("set", func(ctx *exrouter.Context) {
+				if setBirthday(ctx) {
+					go parseAndSendSched(ctx)
+				}
+			})
+		r.On("birthday", nil).
+			On("reset", func(ctx *exrouter.Context) {
+				ctx.Reply("Test reset")
+			})
+	})
 
 	router.Group(func(r *exrouter.Route) {
 		r.Cat("events")

@@ -290,6 +290,11 @@ h6 {
   text-align: justify;
 }
 
+.list-group li.birthday {
+  font-size: 18px;
+  text-align: center;
+}
+
 .list-group li.event::before {
   content: "x";
   margin-left: -20px;

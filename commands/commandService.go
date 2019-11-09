@@ -80,14 +80,17 @@ func ParseTemplate(guildID string) {
 	profiler.Start()
 	g, _ := BotInstance.ClientSession.Guild(guildID)
 	fSched, err := os.Create("./web/schedule-parsed" + guildID + ".html")
+	defer fSched.Close()
+
 	if err != nil {
 		log.Error("create file: ", err)
 		return
 	}
 
 	fToday, err := os.Create("./web/today-parsed" + guildID + ".html")
+	defer fToday.Close()
+
 	if err != nil {
-		fSched.Close()
 		log.Error("create file: ", err)
 		return
 	}
@@ -96,7 +99,12 @@ func ParseTemplate(guildID string) {
 
 	events, err := BotInstance.EventDao.GetAllEventsForServerForWeek(guildID, weekTime, g)
 	if err != nil {
-		fToday.Close()
+		log.Error("", err)
+		return
+	}
+
+	birthdays, err := BotInstance.BirthdayDao.GetAllBirthdaysForServerForWeek(guildID, weekTime, g)
+	if err != nil {
 		log.Error("", err)
 		return
 	}
@@ -121,6 +129,15 @@ func ParseTemplate(guildID string) {
 	satEvts := make([]*domain.EventView, 0)
 	sunEvts := make([]*domain.EventView, 0)
 	curDayEvts := make([]*domain.EventView, 0)
+
+	monBirthdays := make([]*domain.BirthdayView, 0)
+	tuesBirthdays := make([]*domain.BirthdayView, 0)
+	wedBirthdays := make([]*domain.BirthdayView, 0)
+	thursBirthdays := make([]*domain.BirthdayView, 0)
+	friBirthdays := make([]*domain.BirthdayView, 0)
+	satBirthdays := make([]*domain.BirthdayView, 0)
+	sunBirthdays := make([]*domain.BirthdayView, 0)
+	curDayBirthdays := make([]*domain.BirthdayView, 0)
 
 	// TODO: to array accessed by (0-6)/(1-7) based on current day int
 	// Fixes this ugly shit lol
@@ -151,42 +168,90 @@ func ParseTemplate(guildID string) {
 		}
 	}
 
+	for _, birthday := range birthdays {
+		dayOfWeek := birthday.GetTimeFromBirthday().Weekday()
+		switch dayOfWeek {
+		case time.Monday:
+			monBirthdays = appendBirthdayToList(monBirthdays, birthday)
+			break
+		case time.Tuesday:
+			tuesBirthdays = appendBirthdayToList(tuesBirthdays, birthday)
+			break
+		case time.Wednesday:
+			wedBirthdays = appendBirthdayToList(wedBirthdays, birthday)
+			break
+		case time.Thursday:
+			thursBirthdays = appendBirthdayToList(thursBirthdays, birthday)
+			break
+		case time.Friday:
+			friBirthdays = appendBirthdayToList(friBirthdays, birthday)
+			break
+		case time.Saturday:
+			satBirthdays = appendBirthdayToList(satBirthdays, birthday)
+			break
+		case time.Sunday:
+			sunBirthdays = appendBirthdayToList(sunBirthdays, birthday)
+			break
+		}
+	}
+
 	switch time.Now().Weekday() {
 	case time.Monday:
 		curDayEvts = monEvts
+		curDayBirthdays = monBirthdays
 		break
 	case time.Tuesday:
 		curDayEvts = tuesEvts
+		curDayBirthdays = tuesBirthdays
 		break
 	case time.Wednesday:
 		curDayEvts = wedEvts
+		curDayBirthdays = wedBirthdays
 		break
 	case time.Thursday:
 		curDayEvts = thursEvts
+		curDayBirthdays = thursBirthdays
 		break
 	case time.Friday:
 		curDayEvts = friEvts
+		curDayBirthdays = friBirthdays
 		break
 	case time.Saturday:
 		curDayEvts = satEvts
+		curDayBirthdays = satBirthdays
 		break
 	case time.Sunday:
 		curDayEvts = sunEvts
+		curDayBirthdays = sunBirthdays
 		break
 	}
 
 	_, isoWeek := t.ISOWeek()
 	firstDayOfWeek := util.FirstDayOfISOWeek(t.Year(), isoWeek, t.Location())
-	days := buildDayViews(firstDayOfWeek,
-		sortEventList(monEvts),
-		sortEventList(tuesEvts),
-		sortEventList(wedEvts),
-		sortEventList(thursEvts),
-		sortEventList(friEvts),
-		sortEventList(satEvts),
-		sortEventList(sunEvts))
+
+	// GOD ITS SO UGLY PLEASE MAKE IT STOP
+	weekEvts := make([][]*domain.EventView, 0)
+	weekEvts = append(weekEvts, sortEventList(monEvts))
+	weekEvts = append(weekEvts, sortEventList(tuesEvts))
+	weekEvts = append(weekEvts, sortEventList(wedEvts))
+	weekEvts = append(weekEvts, sortEventList(thursEvts))
+	weekEvts = append(weekEvts, sortEventList(friEvts))
+	weekEvts = append(weekEvts, sortEventList(satEvts))
+	weekEvts = append(weekEvts, sortEventList(sunEvts))
+
+	birthdayEvts := make([][]*domain.BirthdayView, 0)
+	birthdayEvts = append(birthdayEvts, monBirthdays)
+	birthdayEvts = append(birthdayEvts, tuesBirthdays)
+	birthdayEvts = append(birthdayEvts, wedBirthdays)
+	birthdayEvts = append(birthdayEvts, thursBirthdays)
+	birthdayEvts = append(birthdayEvts, friBirthdays)
+	birthdayEvts = append(birthdayEvts, satBirthdays)
+	birthdayEvts = append(birthdayEvts, sunBirthdays)
+
+	days := buildDayViews(firstDayOfWeek, weekEvts, birthdayEvts)
 
 	curDayEvts = sortEventList(curDayEvts)
+
 	profiler.StopAndPrintSeconds("Parsing events to views")
 	data := domain.ScheduleView{
 		ServerName:        g.Name,
@@ -194,6 +259,7 @@ func ParseTemplate(guildID string) {
 		Tz:                "<strong>Eastern Standard Time</strong>",
 		CurrentDayString:  time.Now().Format("Monday January 2, 2006"),
 		CurrentDay:        curDayEvts,
+		CurrentBirthdays:  curDayBirthdays,
 		Week: &domain.WeekView{
 			Days: days},
 
@@ -221,40 +287,47 @@ func ParseTemplate(guildID string) {
 
 	// Wait for both templates to be done processing
 	wg.Wait()
-	fSched.Close()
-	fToday.Close()
+	// fSched.Close()
+	// fToday.Close()
 	profiler.StopAndPrintSeconds("Executing templates")
 }
 
-func buildDayViews(firstDayOfWeek time.Time, events ...[]*domain.EventView) []domain.DayView {
+func buildDayViews(firstDayOfWeek time.Time, events [][]*domain.EventView, birthdays [][]*domain.BirthdayView) []domain.DayView {
 	monday := domain.DayView{
 		DayName:            "Monday (" + firstDayOfWeek.Format("1/2") + ")",
 		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Monday),
-		Events:             events[0]}
+		Events:             events[0],
+		Birthdays:          birthdays[0]}
 	tuesday := domain.DayView{
 		DayName:            "Tuesday (" + firstDayOfWeek.AddDate(0, 0, 1).Format("1/2") + ")",
 		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Tuesday),
-		Events:             events[1]}
+		Events:             events[1],
+		Birthdays:          birthdays[1]}
 	wednesday := domain.DayView{
 		DayName:            "Wednesday (" + firstDayOfWeek.AddDate(0, 0, 2).Format("1/2") + ")",
 		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Wednesday),
-		Events:             events[2]}
+		Events:             events[2],
+		Birthdays:          birthdays[2]}
 	thursday := domain.DayView{
 		DayName:            "Thursday (" + firstDayOfWeek.AddDate(0, 0, 3).Format("1/2") + ")",
 		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Thursday),
-		Events:             events[3]}
+		Events:             events[3],
+		Birthdays:          birthdays[3]}
 	friday := domain.DayView{
 		DayName:            "Friday (" + firstDayOfWeek.AddDate(0, 0, 4).Format("1/2") + ")",
 		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Friday),
-		Events:             events[4]}
+		Events:             events[4],
+		Birthdays:          birthdays[4]}
 	saturday := domain.DayView{
 		DayName:            "Saturday (" + firstDayOfWeek.AddDate(0, 0, 5).Format("1/2") + ")",
 		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Saturday),
-		Events:             events[5]}
+		Events:             events[5],
+		Birthdays:          birthdays[5]}
 	sunday := domain.DayView{
 		DayName:            "Sunday (" + firstDayOfWeek.AddDate(0, 0, 6).Format("1/2") + ")",
 		IsCurrentDayString: util.GetCurrentDayForSchedule(time.Sunday),
-		Events:             events[6]}
+		Events:             events[6],
+		Birthdays:          birthdays[6]}
 
 	days := []domain.DayView{
 		monday,
@@ -286,12 +359,61 @@ func appendEventToList(targetList []*domain.EventView, e *domain.Event) []*domai
 		EventName:      e.EventName})
 }
 
+func appendBirthdayToList(targetList []*domain.BirthdayView, e *domain.Birthday) []*domain.BirthdayView {
+	t := e.GetTimeFromBirthday()
+	return append(targetList, &domain.BirthdayView{
+		PrettyPrint: e.ToString(),
+		DayOfWeek:   t.Weekday().String(),
+		HostName:    e.GuildUser.Username})
+}
+
 // TODO: check if another refresh is in progress?
 func parseAndSendSched(ctx *exrouter.Context) {
 	ParseTemplate(ctx.Msg.GuildID)
 	channel := FindSchedChannel(BotInstance, ctx.Msg.GuildID)
 
 	SendSchedule(channel.ID, ctx.Msg.GuildID, BotInstance)
+}
+
+func setBirthday(ctx *exrouter.Context) bool {
+	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
+	birthday, _ := BotInstance.BirthdayDao.GetBirthdayByUser(guild, ctx.Msg.Author)
+
+	if dateString := ctx.Args.Get(0); "" != dateString {
+		t, isValid := validateDateString(ctx, dateString)
+		// Make sure the year is current? Shouldn't really matter as the year never touches the DB...
+		t = time.Date(time.Now().Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+		if !isValid {
+			return false
+		}
+
+		guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
+		if birthday != nil {
+			birthday.BirthdayDay = t.Day()
+			birthday.BirthdayMonth = int(t.Month())
+			birthdayID := BotInstance.BirthdayDao.UpdateBirthdayByUser(birthday, ctx.Msg.Author)
+			birthday, _ = BotInstance.BirthdayDao.GetBirthdayByID(birthdayID, guild, ctx.Msg.Author)
+		} else {
+			birthday = new(domain.Birthday)
+			birthday.ServerID = ctx.Msg.GuildID
+			birthday.GuildUserID = ctx.Msg.Author.ID
+			birthday.BirthdayDay = t.Day()
+			birthday.BirthdayMonth = int(t.Month())
+			birthday = BotInstance.BirthdayDao.InsertBirthday(birthday, BotInstance.ClientSession, guild)
+		}
+		if birthday == nil {
+			log.Error("Error getting birthday after insert")
+			return false
+		}
+
+		// embed := GetEmbedFromBirthday(birthday, "scheduled for ")
+		// BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
+
+		// Return false if we shouldn't update the schedule
+		return birthday.IsBirthdayInCurrentWeek()
+	}
+
+	return false
 }
 
 func postEventStats(ctx *exrouter.Context) {
@@ -356,7 +478,7 @@ func addEvent(ctx *exrouter.Context) bool {
 	BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
 
 	// If our event is outside of the current week period, dont refresh the schedule
-	if event.StartTime.After(util.GetCurrentWeekFromMondayAsTime()) {
+	if event.StartTime.After(util.GetCurrentWeekFromMondayAsTime().AddDate(0, 0, 7)) {
 		return false
 	}
 	return true

@@ -41,6 +41,11 @@
                 {{range .Week.Days}}
                 <li class="day list-group-item {{.IsCurrentDayString}}">{{.DayName}}</li>
                 <ul class="{{.DayName}}-events list-group">
+                    <ul class="{{.DayName}}-birthdays list-group">
+                        {{range .Birthdays}}
+                        <li class="birthday">🎂❤️ {{.PrettyPrint}} ❤️🎂</li>
+                        {{end}}
+                    </ul>
                     {{range .Events}}
                     {{if .HasPassed}}
                     <!--Strike thru style here-->

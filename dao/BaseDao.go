@@ -6,6 +6,8 @@ import (
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 )
 
+// TODO: Refactor this shit to be more generic
+
 func queryForRows(query string, db *sqlite3.Conn, args ...interface{}) (*sqlite3.Stmt, error) {
 
 	stmt, err := db.Prepare(query, args...)

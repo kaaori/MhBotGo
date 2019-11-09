@@ -312,7 +312,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session, g *dis
 		return nil
 	}
 
-	event, err = mapORMFields(event, s, g)
+	event, err = mapEventORMFields(event, s, g)
 	if err != nil {
 		log.Error("Error mapping ORM fields in new event", err)
 		return nil
@@ -341,7 +341,7 @@ func mapRowToEvent(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild)
 	}
 	profiler.Start()
 
-	event, err = mapORMFields(event, s, g)
+	event, err = mapEventORMFields(event, s, g)
 	if err != nil {
 		log.Error("Error mapping ORM Fields in event", err)
 		return nil, err
@@ -350,7 +350,7 @@ func mapRowToEvent(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild)
 	return event, err
 }
 
-func mapORMFields(event *domain.Event, s *discordgo.Session, g *discordgo.Guild) (*domain.Event, error) {
+func mapEventORMFields(event *domain.Event, s *discordgo.Session, g *discordgo.Guild) (*domain.Event, error) {
 
 	event.Server = domain.DiscordServer{Guild: g, ServerID: g.ID}
 

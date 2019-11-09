@@ -30,6 +30,7 @@
                     {{ $length := len .CurrentDay }} {{ if eq $length 0 }}
                     <p class="no-events">No events have been planned <b>for today</b>!<br />Be the first!</p>
                     {{else}}
+
                     {{range .CurrentDay}}
                     {{if .HasPassed}}
                     <!--Strike thru style here-->
@@ -37,6 +38,12 @@
                     {{else}}
                     <li class="event">{{.PrettyPrint}}</li>
                     {{end}}
+                    {{end}}
+                    {{end}}
+
+                    {{ $lengthBday := len .CurrentBirthdays}} {{ if gt $lengthBday 0 }}
+                    {{range .CurrentBirthdays}}
+                    <li class="birthday">🎂❤️ {{.PrettyPrint}} ❤️🎂</li>
                     {{end}}
                     {{end}}
                 </ul>
