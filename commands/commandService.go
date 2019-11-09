@@ -382,6 +382,11 @@ func removeEvent(ctx *exrouter.Context) bool {
 	BotInstance.EventDao.DeleteEventByID(referencedEvent.EventID)
 	embed := GetEmbedFromEvent(referencedEvent, "deleted from ")
 	BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
+
+	// If our event is outside of the current week period, dont refresh the schedule
+	if referencedEvent.StartTime.After(util.GetCurrentWeekFromMondayAsTime()) {
+		return false
+	}
 	return true
 }
 
@@ -410,10 +415,6 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 		event.EventLocation = location
 	} else {
 		ctx.Reply("Please ensure you have given the event a location")
-		return false
-	}
-	// If our event is outside of the current week period, dont refresh the schedule
-	if event.StartTime.After(util.GetCurrentWeekFromMondayAsTime()) {
 		return false
 	}
 	return true
