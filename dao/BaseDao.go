@@ -6,6 +6,15 @@ import (
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 )
 
+var (
+	ConnString = "file:./data/MHBot.db?cache=shared&mode=rwc"
+)
+
+// SetConnString : Updates the connection string for GetConnection calls; mostly used for testing
+func SetConnString(newConnString string) {
+	ConnString = newConnString
+}
+
 // TODO: Refactor this shit to be more generic
 
 func queryForRows(query string, db *sqlite3.Conn, args ...interface{}) (*sqlite3.Stmt, error) {

@@ -16,8 +16,8 @@ var (
 )
 
 // GetConnection : Gets a MHBot DB connection
-func GetConnection() *sqlite3.Conn {
-	DB, err := sqlite3.Open("file:./data/MHBot.db?cache=shared&mode=rwc")
+func GetConnection(connString string) *sqlite3.Conn {
+	DB, err := sqlite3.Open(connString)
 	if err != nil {
 		log.Error("Error Getting DB connection", err)
 		panic("Error connecting to sqlite")

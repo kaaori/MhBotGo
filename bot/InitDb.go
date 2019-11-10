@@ -29,7 +29,7 @@ func ReadDML(dbLocation string) {
 }
 
 func installDML(dml string, dbLocation string) {
-	DB := dao.GetConnection()
+	DB := dao.GetConnection(dao.ConnString)
 	defer DB.Close()
 
 	if DB != nil {

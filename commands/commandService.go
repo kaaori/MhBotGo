@@ -31,7 +31,9 @@ var (
 	ScheduleFileName = "schedule"
 
 	// TodayFileName : The day's event image
-	TodayFileName            = "today"
+	TodayFileName = "today"
+
+	// BirthdayCooldownUsersMap : The map of users on setBirthday command cooldown (15 mins)
 	BirthdayCooldownUsersMap = make(map[string]time.Time)
 )
 
@@ -797,6 +799,7 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Mess
 	}
 	return schedMsg, nil
 }
+
 func contains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
@@ -862,9 +865,6 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	}
 
 	body := ""
-	if isFirstSchedOfWeek {
-		// BotInstance.ClientSession.ChannelMessageSend(schedChannelID, "@everyone")
-	}
 
 	msSched := &discordgo.MessageSend{
 		Content: body,

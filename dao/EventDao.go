@@ -17,7 +17,7 @@ type EventDao struct {
 
 // DeleteAllEventsForServer : Nukes everything for a server
 func (d *EventDao) DeleteAllEventsForServer(serverID string) error {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "delete from Events where ServerID = ?"
@@ -34,7 +34,7 @@ func (d *EventDao) DeleteAllEventsForServer(serverID string) error {
 
 // GetAllEventsForServerForWeek : Gets a server's events within a week range
 func (d *EventDao) GetAllEventsForServerForWeek(serverID string, weekTime time.Time, g *discordgo.Guild) ([]*domain.Event, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Events where ServerID = ? and StartTimestamp between ? AND ?"
@@ -68,7 +68,7 @@ func getEventFromStmt(stmt *sqlite3.Stmt, d *EventDao, g *discordgo.Guild) (*dom
 
 // GetEventsCountForServerForWeek : Gets the # of a server's events within a week range
 func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time.Time) int {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select Count(*) cnt from Events where ServerID = ? and StartTimestamp between ? AND ?"
@@ -84,7 +84,7 @@ func (d *EventDao) GetEventsCountForServerForWeek(serverID string, weekTime time
 
 // GetEventsCountForWeek : Gets the # of all events within a week range
 func (d *EventDao) GetEventsCountForWeek(weekTime time.Time) int {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select Count(*) from Events ORDER by (julianday(DATETIME('NOW')) - julianday(StartTimestamp)) desc LIMIT 1;"
@@ -100,7 +100,7 @@ func (d *EventDao) GetEventsCountForWeek(weekTime time.Time) int {
 
 // GetAllEventCounts : Get a count of all events globally
 func (d *EventDao) GetAllEventCounts() int {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select Count(*) from Events"
@@ -116,7 +116,7 @@ func (d *EventDao) GetAllEventCounts() int {
 
 // GetEventCountForServer : Gets the total count of events for a server
 func (d *EventDao) GetEventCountForServer(serverID string) int {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select Count(*) from Events where ServerID = ?"
@@ -132,7 +132,7 @@ func (d *EventDao) GetEventCountForServer(serverID string) int {
 
 // GetAllEventsForServer : Gets all the events by a given server ID
 func (d *EventDao) GetAllEventsForServer(serverID string, g *discordgo.Guild) ([]*domain.Event, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Events where ServerID = ?"
@@ -147,7 +147,7 @@ func (d *EventDao) GetAllEventsForServer(serverID string, g *discordgo.Guild) ([
 
 // GetNextEventOrDefault : Gets the next occuring event or nil
 func (d *EventDao) GetNextEventOrDefault(guildID string, g *discordgo.Guild) (*domain.Event, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Events where ServerID = ? ORDER by abs(StartTimestamp- strftime('%s', 'now') ) limit 1"
@@ -163,7 +163,7 @@ func (d *EventDao) GetNextEventOrDefault(guildID string, g *discordgo.Guild) (*d
 
 // GetEventByID : Gets an event by its ID
 func (d *EventDao) GetEventByID(ID string, g *discordgo.Guild, u *discordgo.User) (*domain.Event, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Events where EventID = ?"
@@ -178,7 +178,7 @@ func (d *EventDao) GetEventByID(ID string, g *discordgo.Guild, u *discordgo.User
 
 // GetEventByStartTime : Gets an event by its start time and server
 func (d *EventDao) GetEventByStartTime(guildID string, startTime int64, g *discordgo.Guild) (*domain.Event, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Events where StartTimestamp = ? and ServerID = ? limit 1"
@@ -196,7 +196,7 @@ func (d *EventDao) GetEventByStartTime(guildID string, startTime int64, g *disco
 // Returns ID of new event
 // We need to offset the last announcement timestamp, as the rest will already have been offset upon insert
 func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "UPDATE Events " +
@@ -230,7 +230,7 @@ func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
 // DeleteEventByID : Deletes an event by ID
 // Returns ID of deleted event
 func (d *EventDao) DeleteEventByID(ID int64) int64 {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := `	DELETE FROM Events  
@@ -249,7 +249,7 @@ func (d *EventDao) DeleteEventByID(ID int64) int64 {
 // DeleteEventByStartTime : Deletes an event by given start time
 // Returns ID of deleted event
 func (d *EventDao) DeleteEventByStartTime(startTime int64) int64 {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := `	DELETE FROM Events  
@@ -269,7 +269,7 @@ func (d *EventDao) DeleteEventByStartTime(startTime int64) int64 {
 // DeleteEventByStartTimeAndHost : Deletes an event by given start time and host
 // Returns ID of deleted event
 func (d *EventDao) DeleteEventByStartTimeAndHost(startTime int64, hostName string) int64 {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := `	DELETE FROM Events  
@@ -289,7 +289,7 @@ func (d *EventDao) DeleteEventByStartTimeAndHost(startTime int64, hostName strin
 
 // InsertEvent : Insert a new event
 func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session, g *discordgo.Guild) *domain.Event {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := `INSERT INTO Events 

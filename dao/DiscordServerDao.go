@@ -17,7 +17,7 @@ type DiscordServerDao struct {
 
 // GetServerByID : Gets a guild by its ID
 func (d *DiscordServerDao) GetServerByID(ID string) (*domain.DiscordServer, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Servers where ServerID = ?"
@@ -42,7 +42,7 @@ func (d *DiscordServerDao) GetServerByID(ID string) (*domain.DiscordServer, erro
 
 // GetAllServers : Gets all the servers in the database
 func (d *DiscordServerDao) GetAllServers() ([]*domain.DiscordServer, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Servers"
@@ -74,7 +74,7 @@ func (d *DiscordServerDao) GetAllServers() ([]*domain.DiscordServer, error) {
 
 // InsertNewServer : Sets up the initial data for a guild
 func (d *DiscordServerDao) InsertNewServer(serverID string) int64 {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "insert into Servers (ServerID, JoinTimeUnix) values (?,?)"

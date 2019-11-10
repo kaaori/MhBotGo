@@ -16,7 +16,7 @@ type BirthdayDao struct {
 
 // GetAllBirthdaysForServerForWeek : Gets a server's user's birthdays within a week range
 func (d *BirthdayDao) GetAllBirthdaysForServerForWeek(serverID string, weekTime time.Time, g *discordgo.Guild) ([]*domain.Birthday, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Birthdays where ServerID = ? and BirthMonthNum = ? and BirthDayNum between ? AND ?"
@@ -34,7 +34,7 @@ func (d *BirthdayDao) GetAllBirthdaysForServerForWeek(serverID string, weekTime 
 
 // GetBirthdayByID : Gets a birthday by its ID
 func (d *BirthdayDao) GetBirthdayByID(ID int64, g *discordgo.Guild, u *discordgo.User) (*domain.Birthday, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Birthdays where BirthdayID = ?"
@@ -49,7 +49,7 @@ func (d *BirthdayDao) GetBirthdayByID(ID int64, g *discordgo.Guild, u *discordgo
 
 // GetBirthdayByUser : Gets a birthday by a user ID
 func (d *BirthdayDao) GetBirthdayByUser(g *discordgo.Guild, u *discordgo.User) (*domain.Birthday, error) {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from Birthdays where UserID = ? limit 1"
@@ -64,7 +64,7 @@ func (d *BirthdayDao) GetBirthdayByUser(g *discordgo.Guild, u *discordgo.User) (
 
 // InsertBirthday : Insert a new birthday
 func (d *BirthdayDao) InsertBirthday(birthday *domain.Birthday, s *discordgo.Session, g *discordgo.Guild) *domain.Birthday {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := `INSERT INTO Birthdays 
@@ -100,7 +100,7 @@ func (d *BirthdayDao) InsertBirthday(birthday *domain.Birthday, s *discordgo.Ses
 // UpdateBirthdayByUser : Updates a birthday by object
 // Returns ID of new birthday
 func (d *BirthdayDao) UpdateBirthdayByUser(birthday *domain.Birthday, u *discordgo.User) int64 {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "UPDATE Birthdays " +
@@ -129,7 +129,7 @@ func (d *BirthdayDao) UpdateBirthdayByUser(birthday *domain.Birthday, u *discord
 // DeleteBirthdayByUserID : Deletes a birthday by given user ID
 // Returns ID of deleted event
 func (d *BirthdayDao) DeleteBirthdayByUserID(discordID string) int64 {
-	DB := GetConnection()
+	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := `	DELETE FROM Birthdays  
