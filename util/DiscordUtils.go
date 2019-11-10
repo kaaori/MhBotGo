@@ -18,10 +18,12 @@ func init() {
 }
 
 // GetEmbed : Get Embed by parameters
-func GetEmbed(title string, footer string, withThumb bool, fields ...*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
+func GetEmbed(title string, footer string, withThumb bool, customThumb string, fields ...*discordgo.MessageEmbedField) *discordgo.MessageEmbed {
 	url := ""
-	if withThumb {
+	if withThumb && "" == customThumb {
 		url = MhThumb
+	} else if withThumb && customThumb != "" {
+		url = customThumb
 	}
 	return &discordgo.MessageEmbed{
 		// Author:      &discordgo.MessageEmbedAuthor{},

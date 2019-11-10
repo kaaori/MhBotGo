@@ -68,9 +68,9 @@ func (d *BirthdayDao) InsertBirthday(birthday *domain.Birthday, s *discordgo.Ses
 	defer DB.Close()
 
 	query := `INSERT INTO Birthdays 
-	(ServerID, UserID, BirthMonthNum, BirthDayNum) 
+	(ServerID, UserID, BirthMonthNum, BirthDayNum, LastSet) 
 	VALUES
-	(?,?,?,?)`
+	(?,?,?,?,?)`
 
 	stmt, err := DB.Prepare(query)
 	if err != nil {
@@ -81,7 +81,7 @@ func (d *BirthdayDao) InsertBirthday(birthday *domain.Birthday, s *discordgo.Ses
 	defer stmt.Close()
 
 	// We need to increment the birthday by 1 due to how it's being parsed
-	err = stmt.Exec(birthday.ServerID, birthday.GuildUserID, birthday.BirthdayMonth, birthday.BirthdayDay)
+	err = stmt.Exec(birthday.ServerID, birthday.GuildUserID, birthday.BirthdayMonth, birthday.BirthdayDay, time.Now().Unix())
 	if err != nil {
 		log.Error("Error inserting birthday", err)
 		return nil
@@ -108,12 +108,13 @@ func (d *BirthdayDao) UpdateBirthdayByUser(birthday *domain.Birthday, u *discord
 		"		ServerID = ?," +
 		"		UserID = ?," +
 		"		BirthMonthNum = ?," +
-		"		BirthDayNum = ?" +
+		"		BirthDayNum = ?," +
+		"		LastSet = ?" +
 		"	WHERE " +
 		"		UserID = ?"
 
 	stmt, err := DB.Prepare(query,
-		birthday.ServerID, birthday.GuildUserID, birthday.BirthdayMonth, birthday.BirthdayDay, u.ID)
+		birthday.ServerID, birthday.GuildUserID, birthday.BirthdayMonth, birthday.BirthdayDay, time.Now().Unix(), u.ID)
 	if err != nil {
 		log.Error("Error updating birthday", err)
 		return -1
@@ -131,7 +132,7 @@ func (d *BirthdayDao) DeleteBirthdayByUserID(discordID string) int64 {
 	DB := GetConnection()
 	defer DB.Close()
 
-	query := `	DELETE FROM Events  
+	query := `	DELETE FROM Birthdays  
 				WHERE UserID = ?`
 
 	stmt, err := DB.Prepare(query, discordID)
@@ -153,7 +154,8 @@ func mapRowToBirthday(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Gui
 		&birthday.ServerID,
 		&birthday.GuildUserID,
 		&birthday.BirthdayMonth,
-		&birthday.BirthdayDay)
+		&birthday.BirthdayDay,
+		&birthday.LastSetUnix)
 
 	if err != nil {
 		return nil, err
@@ -173,8 +175,7 @@ func mapBirthdayORMFields(birthday *domain.Birthday, s *discordgo.Session, g *di
 
 	birthday.Server = domain.DiscordServer{Guild: g, ServerID: g.ID}
 	birthday.GuildUser, _ = s.User(birthday.GuildUserID)
-
-	// event.Creator = creator
+	birthday.LastSetTime = time.Unix(birthday.LastSetUnix, 0)
 
 	return birthday, nil
 }

@@ -42,9 +42,11 @@
                     {{end}}
 
                     {{ $lengthBday := len .CurrentBirthdays}} {{ if gt $lengthBday 0 }}
+                    <hr />
                     {{range .CurrentBirthdays}}
                     <li class="birthday">🎂❤️ {{.PrettyPrint}} ❤️🎂</li>
                     {{end}}
+                    <p class="birthday">Make sure to wish them a happy birthday~!</p>
                     {{end}}
                 </ul>
             </div>

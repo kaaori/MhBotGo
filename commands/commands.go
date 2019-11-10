@@ -74,7 +74,9 @@ func InstallCommands(instance *bot.Instance) {
 			})
 		r.On("birthday", nil).
 			On("reset", func(ctx *exrouter.Context) {
-				ctx.Reply("Test reset")
+				if resetBirthday(ctx) {
+					go parseAndSendSched(ctx)
+				}
 			})
 	})
 

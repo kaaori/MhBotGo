@@ -8,6 +8,7 @@ import (
 	"github.com/jasonlvhit/gocron"
 	"github.com/kaaori/MhBotGo/bot"
 	"github.com/kaaori/MhBotGo/commands"
+	"github.com/kaaori/MhBotGo/domain"
 	"github.com/kaaori/MhBotGo/util"
 
 	logging "github.com/kaaori/mhbotgo/log"
@@ -30,7 +31,7 @@ func Init(inst *bot.Instance) {
 
 	gocron.Every(1).Day().At("00:30").Do(UpdateFact, inst)
 	gocron.Every(1).Day().At("2:00").Do(UpdateSchedule, inst)
-	// gocron.Every(1).Day().At("10:00").Do(UpdateBirthday, inst)
+	gocron.Every(1).Day().At("10:00").Do(UpdateBirthdays, inst)
 	gocron.Start()
 
 	go procEventLoop(inst)
@@ -54,6 +55,73 @@ func procEventLoop(inst *bot.Instance) {
 		}
 		checkEvents(t, inst)
 		i++
+	}
+}
+
+// UpdateBirthdays : Once a day, go through every stored birthday for a given week and check if it is today
+func UpdateBirthdays(inst *bot.Instance) {
+	for _, g := range inst.ClientSession.State.Guilds {
+		schedChannel := commands.FindSchedChannel(inst, g.ID)
+		if schedChannel == nil {
+			log.Error("Couldn't find schedule channel")
+			continue
+		}
+
+		schedMsg, _ := commands.GetSchedMessage(schedChannel.ID, inst)
+		if schedMsg == nil {
+			commands.ParseTemplate(g.ID)
+			commands.SendSchedule(schedChannel.ID, g.ID, inst)
+		}
+
+		weekTime := util.GetCurrentWeekFromMondayAsTime()
+		birthdays, err := inst.BirthdayDao.GetAllBirthdaysForServerForWeek(g.ID, weekTime, g)
+		if err != nil && err.Error() != "Couldn't find birthday" {
+			log.Error("Error fetching birthdays for guild "+g.Name, err)
+			continue
+		}
+
+		// If there are not events anymore (e.g had 1 but was removed)
+		// Then we need to repost our schedule to reflect that change
+		if len(birthdays) <= 0 && !contains(GuildsWithNoEvents, g.ID) {
+			GuildsWithNoEvents = append(GuildsWithNoEvents, g.ID)
+			commands.ParseTemplate(g.ID)
+			go commands.SendSchedule(schedChannel.ID, g.ID, inst)
+
+			// And go to the next server
+			continue
+		} else if len(birthdays) > 0 && !contains(GuildsWithNoEvents, g.ID) {
+			// Otherwise if there are now events, remove that guild?
+			// This is useless I believe
+			GuildsWithNoEvents = remove(GuildsWithNoEvents, g.ID)
+		}
+
+		birthdaysToPost := make([]*domain.Birthday, 0)
+
+		for _, birthday := range birthdays {
+			announcementChannel := commands.FindAnnouncementsChannel(g, inst)
+
+			if announcementChannel == nil {
+				log.Error("Could not find announcement channel")
+				break
+			}
+
+			content := ""
+
+			// Unannounced = -1
+			if birthday.IsToday() {
+				birthdaysToPost = append(birthdaysToPost, birthday)
+			} else {
+				continue
+			}
+
+			birthdayUser, _ := inst.ClientSession.User(birthday.GuildUserID)
+			msg := &discordgo.MessageSend{
+				Embed:   commands.GetAnnounceEmbedFromBirthday(birthday, birthdayUser),
+				Content: content}
+			log.Trace("Updated birthday for  " + birthdayUser.Username)
+
+			go inst.ClientSession.ChannelMessageSendComplex(announcementChannel.ID, msg)
+		}
 	}
 }
 
@@ -178,6 +246,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 				log.Error("Could not find announcement channel")
 				break
 			}
+
 			announcement := ""
 			body := ""
 			content := ""

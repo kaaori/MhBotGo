@@ -31,7 +31,8 @@ var (
 	ScheduleFileName = "schedule"
 
 	// TodayFileName : The day's event image
-	TodayFileName = "today"
+	TodayFileName            = "today"
+	BirthdayCooldownUsersMap = make(map[string]time.Time)
 )
 
 // MemberHasPermission : Checks if the member has a given perm
@@ -375,9 +376,69 @@ func parseAndSendSched(ctx *exrouter.Context) {
 	SendSchedule(channel.ID, ctx.Msg.GuildID, BotInstance)
 }
 
+/* NOTE:
+ * All set/reset add/remove functions return a bool
+ * which tells the bot whether or not to update the schedule
+ *
+ * All replies should be handled in their respective functions
+ */
+
+func resetBirthday(ctx *exrouter.Context) bool {
+	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
+	birthday, _ := BotInstance.BirthdayDao.GetBirthdayByUser(guild, ctx.Msg.Author)
+
+	if birthday != nil {
+		// If the birthday exists, we need to see if we need to refresh the schedule
+		scheduleNeedsReset := birthday.IsBirthdayInCurrentWeek()
+		// Add them to our cooldown cache just in case they are attempting to spam
+		BirthdayCooldownUsersMap[ctx.Msg.Author.ID] = birthday.LastSetTime
+
+		// Then delete their birthday
+		BotInstance.BirthdayDao.DeleteBirthdayByUserID(birthday.GuildUserID)
+
+		// Provide confirmation and return the needsReset value
+		ctx.Reply("Ok, your birthday has been reset!")
+		return scheduleNeedsReset
+	}
+
+	// Otherwise don't refresh
+	ctx.Reply("Hmm, I couldn't find your birthday, maybe you didn't set it first?")
+
+	return false
+}
+
 func setBirthday(ctx *exrouter.Context) bool {
 	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
 	birthday, _ := BotInstance.BirthdayDao.GetBirthdayByUser(guild, ctx.Msg.Author)
+
+	// In case the user resets their birthday, we want a cache of previous cooldowns
+	lastSetTime, isInCooldownMap := BirthdayCooldownUsersMap[ctx.Msg.Author.ID]
+	isOnCooldown := false
+	// Default expiry time to now
+	expiryTime := time.Now()
+	if isInCooldownMap {
+		// But set it to the proper time if we have it
+		expiryTime = lastSetTime.Add(15 * time.Minute)
+	} else if birthday != nil {
+		expiryTime = birthday.LastSetTime.Add(15 * time.Minute)
+	}
+
+	// If they are on cooldown, error out
+	if isInCooldownMap && expiryTime.After(time.Now()) {
+		isOnCooldown = true
+	} else if birthday != nil && birthday.LastSetTime.Add(15*time.Minute).After(time.Now()) {
+		// Or if the birthday obj exists and that says they are on cooldown, add them to our cache and error out
+		BirthdayCooldownUsersMap[ctx.Msg.Author.ID] = birthday.LastSetTime
+		isOnCooldown = true
+	} else if isInCooldownMap && expiryTime.Before(time.Now()) {
+		// If they are no longer on cooldown, remove them from our cache
+		delete(BirthdayCooldownUsersMap, ctx.Msg.Author.ID)
+	}
+
+	if isOnCooldown {
+		ctx.Reply("Sorry, you are on cooldown from this command! You may only set your birthday once every 15 minutes.")
+		return false
+	}
 
 	if dateString := ctx.Args.Get(0); "" != dateString {
 		t, isValid := validateDateString(ctx, dateString)
@@ -387,8 +448,11 @@ func setBirthday(ctx *exrouter.Context) bool {
 			return false
 		}
 
+		embedText := "set to "
+
 		guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
 		if birthday != nil {
+			embedText = "updated to "
 			birthday.BirthdayDay = t.Day()
 			birthday.BirthdayMonth = int(t.Month())
 			birthdayID := BotInstance.BirthdayDao.UpdateBirthdayByUser(birthday, ctx.Msg.Author)
@@ -406,8 +470,8 @@ func setBirthday(ctx *exrouter.Context) bool {
 			return false
 		}
 
-		// embed := GetEmbedFromBirthday(birthday, "scheduled for ")
-		// BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
+		embed := GetEmbedFromBirthday(birthday, embedText, ctx.Msg.Author)
+		BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
 
 		// Return false if we shouldn't update the schedule
 		return birthday.IsBirthdayInCurrentWeek()
@@ -446,7 +510,7 @@ func postEventStats(ctx *exrouter.Context) {
 	statField := util.GetField("Event stats for *"+guild.Name+"*",
 		"Events held in this server - **"+strconv.Itoa(count)+"** *("+strconv.Itoa(weekCount)+" this week)*"+
 			nearestEventStr, false)
-	emb := util.GetEmbed("", "", true, statField)
+	emb := util.GetEmbed("", "", true, "", statField)
 	ms := &discordgo.MessageSend{
 		Embed: emb}
 	BotInstance.ClientSession.ChannelMessageSendComplex(ctx.Msg.ChannelID, ms)
@@ -545,14 +609,34 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 // GetEmbedFromEvent : Returns a discord embed with the relevant event details
 func GetEmbedFromEvent(event *domain.Event, eventEmbedText string) *discordgo.MessageEmbed {
 	baseField := util.GetField("Event "+eventEmbedText+event.StartTime.Format("January 2, 2006"), event.ToEmbedString(), false)
-	baseEmbed := util.GetEmbed("", "", false, baseField)
+	baseEmbed := util.GetEmbed("", "", false, "", baseField)
+	return baseEmbed
+}
+
+// GetEmbedFromBirthday : Returns a discord embed with the relevant birthday details
+func GetEmbedFromBirthday(birthday *domain.Birthday, birthdayEmbedText string, user *discordgo.User) *discordgo.MessageEmbed {
+	baseField := util.GetField(user.Username+"'s birthday has been set!",
+		// "set to" or "updated to" depending on context
+		"Birthday "+birthdayEmbedText+strconv.Itoa(birthday.BirthdayMonth)+"/"+strconv.Itoa(birthday.BirthdayDay),
+		false)
+	baseEmbed := util.GetEmbed("", "", false, "", baseField)
+	return baseEmbed
+}
+
+// GetAnnounceEmbedFromBirthday : Returns a discord embed with the relevant birthday details
+func GetAnnounceEmbedFromBirthday(birthday *domain.Birthday, user *discordgo.User) *discordgo.MessageEmbed {
+	baseField := util.GetField(user.Username+"'s birthday is today!",
+		// "set to" or "updated to" depending on context
+		"🎂❤️Make sure to wish them a happy birthday❤️🎂",
+		false)
+	baseEmbed := util.GetEmbed("", "", true, user.AvatarURL("128"), baseField)
 	return baseEmbed
 }
 
 // GetAnnounceEmbedFromEvent : Gets an announcement embed from the given event
 func GetAnnounceEmbedFromEvent(event *domain.Event, eventEmbedText string, eventEmbedTitle string) *discordgo.MessageEmbed {
 	baseField := util.GetField(eventEmbedTitle, eventEmbedText, false)
-	baseEmbed := util.GetEmbed("", "", false, baseField)
+	baseEmbed := util.GetEmbed("", "", false, "", baseField)
 	return baseEmbed
 }
 
@@ -564,7 +648,8 @@ func validateDateString(ctx *exrouter.Context, dateString string) (time.Time, bo
 			ctx.Reply("Please check your date format and try again")
 			return time.Now().In(util.ServerLoc), false
 		}
-		return t.In(util.ServerLoc), true
+		// Don't adjust to server time?
+		return t, true
 	}
 	return time.Now().In(util.ServerLoc), false
 
@@ -799,23 +884,23 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	fFacts.Close()
 	fSched.Close()
 
-	deleteFiles(guildID)
+	// deleteFiles(guildID)
 }
 
-func deleteFiles(guildID string) {
-	scheduleFileName := "schedule" + guildID + ".png"
-	todayFileName := "today" + guildID + ".png"
-	err := os.Remove(scheduleFileName)
-	if err != nil {
-		log.Error("Error deleting schedule", err)
-		// return
-	}
-	err = os.Remove(todayFileName)
-	if err != nil {
-		log.Error("Error deleting schedule banner", err)
-		// return
-	}
-}
+// func deleteFiles(guildID string) {
+// 	scheduleFileName := "schedule" + guildID + ".png"
+// 	todayFileName := "today" + guildID + ".png"
+// 	err := os.Remove(scheduleFileName)
+// 	if err != nil {
+// 		log.Error("Error deleting schedule", err)
+// 		// return
+// 	}
+// 	err = os.Remove(todayFileName)
+// 	if err != nil {
+// 		log.Error("Error deleting schedule banner", err)
+// 		// return
+// 	}
+// }
 
 func getMinutesOrHoursInRelationToClosestEvent(nearestEvent *domain.Event) string {
 	minutesUntilNext := time.Until(nearestEvent.StartTime)
