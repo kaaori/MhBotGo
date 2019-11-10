@@ -30,9 +30,12 @@ type Event struct {
 	EndTime              time.Time
 }
 
+var (
+	emojiRegex = regexp.MustCompile("<(a)?:.*?:(.*?)>")
+)
+
 // ToString : Provides a pretty-print string for the event
 func (e *Event) ToString() string {
-	emojiRegex := regexp.MustCompile("<(a)?:.*?:(.*?)>")
 	return "<strong><em>" + e.StartTime.Format(time.Kitchen) +
 		" - " + strip.StripTags(emojiRegex.ReplaceAllString(e.EventName, "")) +
 		"</strong></em> (Hosted  by <strong><em>" + strip.StripTags(emojiRegex.ReplaceAllString(e.HostName, "")) + "</em></strong> in " + strip.StripTags(emojiRegex.ReplaceAllString(e.EventLocation, "")) + ")"
@@ -42,19 +45,19 @@ func (e *Event) ToString() string {
 // Server Loc offset is calculated here as this is before it touches the DB and is adjusted
 func (e *Event) ToEmbedString() string {
 	return "• *" + e.StartTime.Format(time.Kitchen) +
-		" (Eastern Standard Time)* ── **" + e.EventName + "** ── (Hosted  by ***" + e.HostName +
-		"*** in " + e.EventLocation + ")"
+		" (Eastern Standard Time)* ── **" + strip.StripTags(emojiRegex.ReplaceAllString(e.EventName, "")) + "** ── (Hosted  by ***" + strip.StripTags(emojiRegex.ReplaceAllString(e.HostName, "")) +
+		"*** in " + strip.StripTags(emojiRegex.ReplaceAllString(e.EventLocation, "")) + ")"
 }
 
 // ToAnnounceString : Gets the string representing the pre-starting announcement for the given event
 func (e *Event) ToAnnounceString() string {
-	return "**" + e.HostName + "** is about to start this event in " +
-		e.EventLocation + " at **" + e.StartTime.Format("3:04 PM") +
+	return "**" + strip.StripTags(emojiRegex.ReplaceAllString(e.HostName, "")) + "** is about to start this event in " +
+		strip.StripTags(emojiRegex.ReplaceAllString(e.EventLocation, "")) + " at **" + e.StartTime.Format("3:04 PM") +
 		" (Eastern Standard Time)!**"
 }
 
 // ToStartingString : Gets the string representing the starting announcement for the given event
 func (e *Event) ToStartingString() string {
-	return "Join up on **" + e.HostName + "**! This event is taking place at **" +
+	return "Join up on **" + strip.StripTags(emojiRegex.ReplaceAllString(e.HostName, "")) + "**! This event is taking place at **" +
 		e.StartTime.Format("3:04 PM") + "**, and will last roughly 2 hours"
 }

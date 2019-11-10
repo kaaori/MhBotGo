@@ -25,11 +25,12 @@ type Birthday struct {
 }
 
 // ToString : Provides a pretty-print string for the event
-func (e Birthday) ToString() string {
+func (b Birthday) ToString() string {
 	emojiRegex := regexp.MustCompile("<(a)?:.*?:(.*?)>")
-	return "<strong><em> " + strip.StripTags(emojiRegex.ReplaceAllString(e.GuildUser.Username, "")) + "'s</strong></em> birthday!"
+	return "<strong><em> " + strip.StripTags(emojiRegex.ReplaceAllString(b.GuildUser.Username, "")) + "'s</strong></em> birthday!"
 }
 
+// IsBirthdayInCurrentWeek : Is the birthday in the current week in the current year
 func (b Birthday) IsBirthdayInCurrentWeek() bool {
 	t := time.Date(time.Now().Year(), time.Month(b.BirthdayMonth), b.BirthdayDay, 0, 0, 0, 0, time.Now().Location())
 
@@ -38,6 +39,7 @@ func (b Birthday) IsBirthdayInCurrentWeek() bool {
 	return !t.Before(util.GetCurrentWeekFromMondayAsTime()) && !t.After(util.GetCurrentWeekFromMondayAsTime().AddDate(0, 0, 7))
 }
 
+// IsToday : Is the birthday today
 func (b Birthday) IsToday() bool {
 	t := time.Date(time.Now().Year(), time.Month(b.BirthdayMonth), b.BirthdayDay, 0, 0, 0, 0, time.Now().Location())
 
@@ -46,6 +48,7 @@ func (b Birthday) IsToday() bool {
 	return now.Day() == t.Day() && now.Month() == t.Month()
 }
 
+// GetTimeFromBirthday : Returns a time.Time of the given birthday with the hour of the current time
 func (b Birthday) GetTimeFromBirthday() time.Time {
 	return time.Date(time.Now().Year(), time.Month(b.BirthdayMonth), int(time.Weekday(b.BirthdayDay)), time.Now().Hour(), 0, 0, 0, time.Now().Location())
 }
