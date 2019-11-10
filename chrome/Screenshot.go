@@ -84,7 +84,7 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte) chromedp.Tasks {
 			width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
 
 			// force viewport emulation
-			err = emulation.SetDeviceMetricsOverride(width, height, 1, false).
+			err = emulation.SetDeviceMetricsOverride(width, height, 1, true).
 				WithScreenOrientation(&emulation.ScreenOrientation{
 					Type:  emulation.OrientationTypePortraitPrimary,
 					Angle: 0,

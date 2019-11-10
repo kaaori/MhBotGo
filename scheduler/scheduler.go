@@ -26,7 +26,6 @@ type Scheduler struct{}
 func Init(inst *bot.Instance) {
 	log.Info("Scheduler tasks starting.")
 
-	// Check birthdays here as well
 	gocron.Every(1).Monday().At("12:00").Do(WeeklyEvents, inst)
 
 	gocron.Every(1).Day().At("00:30").Do(UpdateFact, inst)

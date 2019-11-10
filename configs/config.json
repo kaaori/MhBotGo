@@ -12,7 +12,7 @@
     ],
     "eventRunnerRole": "Event Runner",
     "eventAttendeeRole": "Event Attendees",
-    "isTodayTargeted": true,
+    "isTodayTargeted": false,
     "isScheduleTargeted": false,
     "RssLink": "https://unbelievablefactsblog.com/rss#_=_"
 }

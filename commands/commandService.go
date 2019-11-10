@@ -572,7 +572,7 @@ func removeEvent(ctx *exrouter.Context) bool {
 	BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
 
 	// If our event is outside of the current week period, dont refresh the schedule
-	if referencedEvent.StartTime.After(util.GetCurrentWeekFromMondayAsTime()) {
+	if referencedEvent.StartTime.After(util.GetCurrentWeekFromMondayAsTime().AddDate(0, 0, 7)) {
 		return false
 	}
 	return true

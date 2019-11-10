@@ -16,7 +16,7 @@ func readyEvent(s *discordgo.Session, ready *discordgo.Ready) {
 func guildJoinEvent(s *discordgo.Session, guild *discordgo.GuildCreate) {
 	scheduler.GuildsWithNoEvents = append(scheduler.GuildsWithNoEvents, guild.ID)
 
-	DB := dao.GetConnection()
+	DB := dao.GetConnection(dao.ConnString)
 	defer DB.Close()
 
 	if DB == nil {
