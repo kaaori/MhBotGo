@@ -60,9 +60,16 @@ func InstallCommands(instance *bot.Instance) {
 		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
 		ctx.Reply("Ok, fact has been updated if a newer one is available <3")
 	})
+	router.On("refresh", nil).On("help", func(ctx *exrouter.Context) {
+		if !AuthEventRunner(ctx) {
+			return
+		}
+		deleteHelpImage()
+		ctx.Reply("Ok! The help command image will be updated the next time the command is used<3 | Server-time: " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+	})
 
 	router.On("help", func(ctx *exrouter.Context) {
-
+		go sendHelpMessage(ctx)
 	})
 
 	router.Group(func(r *exrouter.Route) {
@@ -112,7 +119,7 @@ func InstallCommands(instance *bot.Instance) {
 				return
 			}
 			parseAndSendSched(ctx)
-			ctx.Reply("Ok, I have refreshed the curent schedule<3 | Server-time: " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+			ctx.Reply("Ok, I have refreshed the current schedule<3 | Server-time: " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
 		})
 		// r.On("events", nil).On("clear", func(ctx *exrouter.Context) {
 		// 	if !AuthEventRunner(ctx) {

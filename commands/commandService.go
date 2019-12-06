@@ -378,6 +378,25 @@ func parseAndSendSched(ctx *exrouter.Context) {
 	SendSchedule(channel.ID, ctx.Msg.GuildID, BotInstance)
 }
 
+func sendHelpMessage(ctx *exrouter.Context) {
+	dmChannel, err := ctx.Ses.UserChannelCreate(ctx.Msg.Author.ID)
+	if err != nil {
+		log.Error("Error sending DM: ", err)
+		ctx.Reply("I couldn't send you a DM for some reason, sorry!")
+		return
+	}
+	msg, _ := ctx.Reply("Ok! You should receive a help message in your DMs shortly<3")
+
+	SendHelpImage(dmChannel)
+
+	// Wait 5 seconds and delete the confirmation message
+	go func() {
+		time.Sleep(5 * time.Second)
+		ctx.Ses.ChannelMessageDelete(msg.ChannelID, msg.ID)
+	}()
+
+}
+
 /* NOTE:
  * All set/reset add/remove functions return a bool
  * which tells the bot whether or not to update the schedule
@@ -813,6 +832,49 @@ func contains(s []string, e string) bool {
 	return false
 }
 
+func deleteHelpImage() {
+	path, _ := os.Getwd()
+	helpFileName := "help.png"
+	helpExists, _ := exists(path + helpFileName)
+	if helpExists {
+		os.Remove(helpFileName)
+	}
+}
+
+// SendHelpImage : Send the screenshotted help.html file in a DM
+func SendHelpImage(dmChannel *discordgo.Channel) {
+	path, _ := os.Getwd()
+	helpFileName := "help.png"
+
+	helpExists, err := exists(path + helpFileName)
+	if err != nil || !helpExists {
+		// File doesn't exist... so make it
+		chrome.TakeScreenshot(defaultScreenshotW, defaultScreenshotH, "#today", helpFileName, "file:///"+path+"/web/help.html", false)
+	}
+
+	fHelp, err := os.Open(helpFileName)
+	if err != nil {
+		log.Error("Error getting schedule banner", err)
+		fHelp.Close()
+		return
+	}
+
+	body := ""
+
+	msHelp := &discordgo.MessageSend{
+		Content: body,
+		Files: []*discordgo.File{
+			&discordgo.File{
+				Name:   helpFileName,
+				Reader: fHelp,
+			},
+		},
+	}
+
+	BotInstance.ClientSession.ChannelMessageSendComplex(dmChannel.ID, msHelp)
+	fHelp.Close()
+}
+
 // SendSchedule : Parses and sends the schedule message to a given channel
 func SendSchedule(schedChannelID string, guildID string, inst *bot.Instance, isFirstSchedOfWeek ...bool) {
 	log.Trace("Send sched fired")
@@ -927,4 +989,12 @@ func getMinutesOrHoursInRelationToClosestEvent(nearestEvent *domain.Event) strin
 			" minutes " + tilOrSinceStr
 	}
 	return "\n" + minutesStr
+}
+
+func exists(name string) (bool, error) {
+	_, err := os.Stat(name)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return err != nil, err
 }

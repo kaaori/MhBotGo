@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	// ConnString : The connection string to the default DB directory
 	ConnString = "file:./data/MHBot.db?cache=shared&mode=rwc"
 )
 

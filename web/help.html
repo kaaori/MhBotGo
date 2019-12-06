@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Help</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="schedule.css" />
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata|Pacifico|Quicksand&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+    <div id="today">
+        <div id="commands-content">
+            <div id="today-banner">
+                <!--img class="img" src="./images/mhlogo.jpg" width="128" height="128" alt="Midnight Haven logo"-->
+                <h3>Hello!! ❤️</h3>
+
+                <h4 class="today-subtext">Here is a helpful list of commands and their usages!</h4>
+            </div>
+            <hr />
+            <div id="commands-list">
+                <h3>Normal commands:</h3>
+                <ul class="commands list-group">
+                    <div class="command">
+                        <li class="event command-header">!mh birthdays set "month/day"</li>
+                        <ul>
+                            <li class="event command-text">Sets your birthdate</li>
+                            <li class="event command-example preformatted">&emsp;!mh birthdays set 11/4</li>
+                        </ul>
+                    </div>
+                    <div class="command">
+                        <li class="event command-header">!mh birthdays reset</li>
+                        <ul>
+                            <li class="event command-text">&emsp;Resets your birthdate</li>
+                        </ul>
+                    </div>
+                </ul>
+
+                <h3>Event runner commands:</h3>
+                <ul class="commands list-group">
+                    <div class="command">
+                        <li class="event command-header">!mh events add "mm/dd/yyyy HH:MMpm" "Host" "Event Name"
+                            "Location"</li>
+                        <ul>
+                            <li class="event command-text">Adds an event for the given day, if it's in the current
+                                week it will refresh the schedule</li>
+                            <li class="event command-example preformatted">&emsp;!mh events add "12/4/2019 11:30pm"
+                                "MHChan" "My event!" "My computer"</li>
+                        </ul>
+                    </div>
+                    <div class="command">
+                        <li class="event command-header">!mh events remove "mm/dd/yyyy HH:MMpm" "Host" "Event name"
+                            "Location"</li>
+                        <ul>
+                            <li class="event command-text">Removes an event for the given day, if it's in the
+                                current
+                                week it will refresh the schedule</li>
+                            <li class="event command-example preformatted">&emsp;!mh events remove "12/4/2019 11:30pm"
+                                "MHChan" "My event!" "My computer"</li>
+                        </ul>
+                    </div>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
