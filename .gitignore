@@ -17,3 +17,4 @@
 configs/config-LIVE.json
 
 build/*
+data/*.db

@@ -709,7 +709,11 @@ func GetNewFact() (string, string) {
 
 	//build request
 	fp := gofeed.NewParser()
-	feed, _ := fp.ParseURL(config.GetString("RssLink"))
+	feed, err := fp.ParseURL(config.GetString("RssLink"))
+	if err != nil {
+		log.Error("Could not find fact", err)
+		return "Uh oh! Fact not found ;-;", "Fact of the day could not be reached... I'm sorry ;-;"
+	}
 
 	if len(feed.Items) <= 0 {
 		//error shit

@@ -87,9 +87,9 @@ func (d *EventDao) GetEventsCountForWeek(weekTime time.Time) int {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
-	query := "select Count(*) from Events ORDER by (julianday(DATETIME('NOW')) - julianday(StartTimestamp)) desc LIMIT 1;"
+	query := "select Count(*) from Events where StartTimestamp between ? AND ?;"
 	// -2*3600 for 2 hr buffer between midnight & an events start
-	stmt, err := queryForRows(query, DB)
+	stmt, err := queryForRows(query, DB, weekTime.Unix()+util.ServerLocOffset-(2*3600), weekTime.AddDate(0, 0, 6).Unix()+util.ServerLocOffset+(2*3600))
 	if err != nil {
 		return -1
 	}

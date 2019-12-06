@@ -59,6 +59,12 @@ func procEventLoop(inst *bot.Instance) {
 
 // UpdateBirthdays : Once a day, go through every stored birthday for a given week and check if it is today
 func UpdateBirthdays(inst *bot.Instance) {
+	defer func() {
+		if err := recover(); err != nil {
+			// if we're in here, we had a panic and have caught it
+			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+		}
+	}()
 	for _, g := range inst.ClientSession.State.Guilds {
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
@@ -126,6 +132,12 @@ func UpdateBirthdays(inst *bot.Instance) {
 
 // UpdateSchedule : Refreshes the schedule for the current day
 func UpdateSchedule(inst *bot.Instance) {
+	defer func() {
+		if err := recover(); err != nil {
+			// if we're in here, we had a panic and have caught it
+			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+		}
+	}()
 	for _, g := range inst.ClientSession.State.Guilds {
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
@@ -138,11 +150,23 @@ func UpdateSchedule(inst *bot.Instance) {
 }
 
 func WeeklyEvents(inst *bot.Instance) {
+	defer func() {
+		if err := recover(); err != nil {
+			// if we're in here, we had a panic and have caught it
+			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+		}
+	}()
 	ClearSchedulesAndMakeEveryoneMad(inst)
 }
 
 // PingEveryoneInScheduleChannel : Ping everyone in schedule channel
 func PingEveryoneInScheduleChannel(guildID string, channelID string, s *discordgo.Session) {
+	defer func() {
+		if err := recover(); err != nil {
+			// if we're in here, we had a panic and have caught it
+			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+		}
+	}()
 	_, err := s.ChannelMessageSend(channelID, "@everyone")
 	if err != nil {
 		log.Error("Error pinging everyone", err)
@@ -153,6 +177,12 @@ func PingEveryoneInScheduleChannel(guildID string, channelID string, s *discordg
 // ClearSchedulesAndMakeEveryoneMad : Deletes any open schedules that may be floating around and refreshes them
 // Ran every Monday to reset the current week at noon
 func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
+	defer func() {
+		if err := recover(); err != nil {
+			// if we're in here, we had a panic and have caught it
+			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+		}
+	}()
 	log.Info("Clearing schedules.")
 	for _, g := range inst.ClientSession.State.Guilds {
 
@@ -189,6 +219,12 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 
 // UpdateFact : Updates the fact of the day from an RSS feed
 func UpdateFact(inst *bot.Instance) {
+	defer func() {
+		if err := recover(); err != nil {
+			// if we're in here, we had a panic and have caught it
+			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+		}
+	}()
 	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact()
 	for _, g := range inst.ClientSession.State.Guilds {
 

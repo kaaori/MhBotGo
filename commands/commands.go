@@ -19,7 +19,7 @@ var (
 	authRoles []string
 
 	defaultScreenshotW = int64(1920)
-	defaultScreenshotH = int64(1)
+	defaultScreenshotH = int64(1080)
 
 	// BotInstance : The instance of the bot containing the discord session and all relevant DAOs
 	BotInstance *bot.Instance
@@ -38,8 +38,6 @@ func InstallCommands(instance *bot.Instance) {
 	//				* the bot will destroy the VC
 	//
 	//			- Birthdays
-	//				- Users can assign or update their birthdate  	: !mh birthday set "mm/dd"
-	//				- Users can unassign their birthday 			: !mh birthday reset
 	//				- Bot will check for the week if a birthday is occurring in the set week
 	//					* Add special event for user's birthday to append to schedule
 
@@ -61,6 +59,10 @@ func InstallCommands(instance *bot.Instance) {
 		}
 		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
 		ctx.Reply("Ok, fact has been updated if a newer one is available <3")
+	})
+
+	router.On("help", func(ctx *exrouter.Context) {
+
 	})
 
 	router.Group(func(r *exrouter.Route) {

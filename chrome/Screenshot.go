@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math"
 	"sync"
+	"time"
 
 	logging "github.com/kaaori/mhbotgo/log"
 
@@ -33,7 +34,7 @@ func TakeScreenshot(w int64, h int64, element string, fileName string, urlString
 	}
 
 	ctx, cancel := chromedp.NewContext(context.Background())
-	// defer ctx.Done()
+	defer ctx.Done()
 	defer cancel()
 
 	var buf []byte
@@ -44,7 +45,7 @@ func TakeScreenshot(w int64, h int64, element string, fileName string, urlString
 		}
 	} else {
 		if err := chromedp.Run(ctx, fullScreenshot(urlString,
-			100, &buf)); err != nil {
+			100, &buf, w, h)); err != nil {
 			log.Error("Error setting device metrics: ", err)
 		}
 	}
@@ -58,10 +59,9 @@ func TakeScreenshot(w int64, h int64, element string, fileName string, urlString
 func elementScreenshot(urlstr, sel string, res *[]byte) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.Navigate(urlstr),
-		// chromedp.ScrollIntoView(sel),
-		// chromedp.Sleep(1 * time.Second),
+		chromedp.ScrollIntoView(sel),
+		chromedp.Sleep(1 * time.Second),
 		chromedp.WaitVisible(sel, chromedp.ByID),
-		// chromedp.
 		chromedp.Screenshot(sel, res, chromedp.NodeVisible, chromedp.ByID),
 	}
 }
@@ -71,7 +71,7 @@ func elementScreenshot(urlstr, sel string, res *[]byte) chromedp.Tasks {
 // Liberally copied from puppeteer's source.
 //
 // Note: this will override the viewport emulation settings.
-func fullScreenshot(urlstr string, quality int64, res *[]byte) chromedp.Tasks {
+func fullScreenshot(urlstr string, quality int64, res *[]byte, w int64, h int64) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.Navigate(urlstr),
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -82,6 +82,7 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte) chromedp.Tasks {
 			}
 
 			width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
+			// width, height := w, h
 
 			// force viewport emulation
 			err = emulation.SetDeviceMetricsOverride(width, height, 1, true).
