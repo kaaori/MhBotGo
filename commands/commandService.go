@@ -724,6 +724,9 @@ func findRoleByID(ctx *exrouter.Context, roleID string) (*discordgo.Role, error)
 }
 
 // GetNewFact : Sets the in-memory fact
+// If the fact has not changed since the last time it was checked, it will fallback to a user fact
+// And if a user fact cannot be found, then it will default to an explanation to encourage users to enter their own facts
+// about themselves
 func GetNewFact(currentFact string, isUserFact bool) (string, string) {
 	log.Info("Updating fact...")
 
