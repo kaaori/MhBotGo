@@ -58,7 +58,7 @@ func InstallCommands(instance *bot.Instance) {
 			return
 		}
 		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance.CurrentFact, false)
-		ctx.Reply("Ok, fact has been updated if a newer one is available <3")
+		ctx.Reply("Ok, fact has been updated if a newer one is available <3\n`" + BotInstance.CurrentFact + "`")
 	})
 
 	router.On("refresh", nil).On("userfact", func(ctx *exrouter.Context) {
@@ -66,7 +66,7 @@ func InstallCommands(instance *bot.Instance) {
 			return
 		}
 		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance.CurrentFact, true)
-		ctx.Reply("Ok, fact has been updated to a user fact if one is available <3")
+		ctx.Reply("Ok, fact has been updated if a newer one is available <3\n`" + BotInstance.CurrentFact + "`")
 	})
 
 	router.On("refresh", nil).On("help", func(ctx *exrouter.Context) {

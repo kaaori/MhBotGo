@@ -733,12 +733,22 @@ func GetNewFact(currentFact string, isUserFact bool) (string, string) {
 	if err != nil || isUserFact {
 		log.Error("Could not find RSS fact, getting user fact instead", err)
 		userFact := getUserFact()
+		if userFact == nil {
+			return "There was an issue getting the fact.", "Sorry! There's been an issue getting the fact for today ;-;<br/>" +
+				"If you want to enter in a fact about yourself, do so with the command !mh fact \"Fact about me\" to enter it into the rotation!<br/>" +
+				"To keep things fresh, once a user fact has been shown it will not be shown for another 7 days"
+		}
 		return "Did you know this about " + userFact.User.Username + "?", userFact.FactContent
 	}
 
 	if len(feed.Items) <= 0 {
 		log.Error("Could not find RSS fact, getting user fact instead", err)
 		userFact := getUserFact()
+		if userFact == nil {
+			return "There was an issue getting the fact.", "Sorry! There's been an issue getting the fact for today ;-;<br/>" +
+				"If you want to enter in a fact about yourself, do so with the command !mh fact \"Fact about me\" to enter it into the rotation!<br/>" +
+				"To keep things fresh, once a user fact has been shown it will not be shown for another 7 days"
+		}
 		return "Did you know this about " + userFact.User.Username + "?", userFact.FactContent
 	}
 
@@ -750,6 +760,11 @@ func GetNewFact(currentFact string, isUserFact bool) (string, string) {
 	if len(content) <= 0 || content == currentFact {
 		log.Error("Getting user fact instead of normal fact", err)
 		userFact := getUserFact()
+		if userFact == nil {
+			return "There was an issue getting the fact.", "Sorry! There's been an issue getting the fact for today ;-;<br/>" +
+				"If you want to enter in a fact about yourself, do so with the command !mh fact \"Fact about me\" to enter it into the rotation!<br/>" +
+				"To keep things fresh, once a user fact has been shown it will not be shown for another 7 days"
+		}
 		return "Did you know this about " + userFact.User.Username + "?", userFact.FactContent
 	}
 

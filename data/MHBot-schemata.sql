@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS Birthdays(
     UserID 				VARCHAR(20),
     BirthMonthNum 		INTEGER,
     BirthDayNum 		INTEGER,
+	LastSet 			INTEGER,
 
     FOREIGN KEY(ServerID) REFERENCES Servers(ServerID)
 );
