@@ -80,7 +80,7 @@ func InstallCommands(instance *bot.Instance) {
 	router.On("fact", func(ctx *exrouter.Context) {
 		fact := insertFact(ctx)
 		if fact != nil {
-			ctx.Reply("Ok, your fact has been inserted! <3")
+			ctx.Reply("Ok, your fact has been inserted! <3\n`" + fact.FactContent + "`")
 		} else {
 			ctx.Reply("There was an issue setting your fact, please try again later")
 		}

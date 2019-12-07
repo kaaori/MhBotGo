@@ -389,10 +389,11 @@ func sendHelpMessage(ctx *exrouter.Context) {
 
 	SendHelpImage(dmChannel)
 
-	// Wait 5 seconds and delete the confirmation message
+	// Wait 5 seconds and delete the confirmation message + the user message if possible
 	go func() {
 		time.Sleep(5 * time.Second)
 		ctx.Ses.ChannelMessageDelete(msg.ChannelID, msg.ID)
+		ctx.Ses.ChannelMessageDelete(msg.ChannelID, ctx.Msg.ID)
 	}()
 
 }
