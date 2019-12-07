@@ -225,7 +225,7 @@ func UpdateFact(inst *bot.Instance) {
 			fmt.Printf("Panic deferred in scheduler: %s\n", err)
 		}
 	}()
-	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact()
+	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact(inst.CurrentFact, false)
 	for _, g := range inst.ClientSession.State.Guilds {
 
 		schedChannel := commands.FindSchedChannel(inst, g.ID)

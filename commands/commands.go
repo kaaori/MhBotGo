@@ -57,15 +57,33 @@ func InstallCommands(instance *bot.Instance) {
 		if !AuthEventRunner(ctx) {
 			return
 		}
-		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact()
+		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance.CurrentFact, false)
 		ctx.Reply("Ok, fact has been updated if a newer one is available <3")
 	})
+
+	router.On("refresh", nil).On("userfact", func(ctx *exrouter.Context) {
+		if !AuthEventRunner(ctx) {
+			return
+		}
+		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance.CurrentFact, true)
+		ctx.Reply("Ok, fact has been updated to a user fact if one is available <3")
+	})
+
 	router.On("refresh", nil).On("help", func(ctx *exrouter.Context) {
 		if !AuthEventRunner(ctx) {
 			return
 		}
 		deleteHelpImage()
 		ctx.Reply("Ok! The help command image will be updated the next time the command is used<3 | Server-time: " + time.Now().In(util.ServerLoc).Format("Mon Jan 2 15:04:05 -0700 MST 2006"))
+	})
+
+	router.On("fact", func(ctx *exrouter.Context) {
+		fact := insertFact(ctx)
+		if fact != nil {
+			ctx.Reply("Ok, your fact has been inserted! <3")
+		} else {
+			ctx.Reply("There was an issue setting your fact, please try again later")
+		}
 	})
 
 	router.On("help", func(ctx *exrouter.Context) {
@@ -150,7 +168,10 @@ func InstallCommands(instance *bot.Instance) {
 				fmt.Printf("Panic deferred in command [%s]: %s\n", m.Content, err)
 			}
 		}()
-		router.FindAndExecute(session, prefix, session.State.User.ID, m.Message)
+		// We dont want our bot to respond to itself or other bots
+		if !m.Message.Author.Bot {
+			router.FindAndExecute(session, prefix, session.State.User.ID, m.Message)
+		}
 	})
 
 	log.Info("Commands installed.")

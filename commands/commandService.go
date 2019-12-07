@@ -723,24 +723,34 @@ func findRoleByID(ctx *exrouter.Context, roleID string) (*discordgo.Role, error)
 }
 
 // GetNewFact : Sets the in-memory fact
-func GetNewFact() (string, string) {
+func GetNewFact(currentFact string, isUserFact bool) (string, string) {
 	log.Info("Updating fact...")
 
 	//build request
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL(config.GetString("RssLink"))
-	if err != nil {
-		log.Error("Could not find fact", err)
-		return "Uh oh! Fact not found ;-;", "Fact of the day could not be reached... I'm sorry ;-;"
+	if err != nil || isUserFact {
+		log.Error("Could not find RSS fact, getting user fact instead", err)
+		userFact := getUserFact()
+		return "Did you know this about " + userFact.User.Username + "?", userFact.FactContent
 	}
 
 	if len(feed.Items) <= 0 {
-		//error shit
-		return "Uh oh! Fact not found ;-;", "Fact of the day could not be reached... I'm sorry ;-;"
+		log.Error("Could not find RSS fact, getting user fact instead", err)
+		userFact := getUserFact()
+		return "Did you know this about " + userFact.User.Username + "?", userFact.FactContent
 	}
+
 	curItem := feed.Items[0]
 	title := curItem.Title
 	content := strip.StripTags(curItem.Description)
+
+	// If the content is empty (video link) or is the same as the last acquired fact
+	if len(content) <= 0 || content == currentFact {
+		log.Error("Getting user fact instead of normal fact", err)
+		userFact := getUserFact()
+		return "Did you know this about " + userFact.User.Username + "?", userFact.FactContent
+	}
 
 	return title, content
 }
@@ -949,24 +959,31 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 	BotInstance.ClientSession.ChannelMessageSendComplex(schedChannelID, msSched)
 	fFacts.Close()
 	fSched.Close()
-
-	// deleteFiles(guildID)
 }
 
-// func deleteFiles(guildID string) {
-// 	scheduleFileName := "schedule" + guildID + ".png"
-// 	todayFileName := "today" + guildID + ".png"
-// 	err := os.Remove(scheduleFileName)
-// 	if err != nil {
-// 		log.Error("Error deleting schedule", err)
-// 		// return
-// 	}
-// 	err = os.Remove(todayFileName)
-// 	if err != nil {
-// 		log.Error("Error deleting schedule banner", err)
-// 		// return
-// 	}
-// }
+/* ------------- User Facts ------------- */
+func getUserFact() *domain.Fact {
+	fact, err := BotInstance.FactDao.GetRandomFact()
+	if err != nil || fact == nil {
+		return nil
+	}
+	return fact
+}
+
+func insertFact(ctx *exrouter.Context) *domain.Fact {
+	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
+	fact := BotInstance.FactDao.InsertFact(parseFact(ctx), ctx.Ses, guild)
+	return fact
+}
+
+func parseFact(ctx *exrouter.Context) *domain.Fact {
+	// Everything after "Prefix Fact"
+	return &domain.Fact{
+		UserID:      ctx.Msg.Author.ID,
+		FactContent: ctx.Args.After(1)}
+}
+
+/* -------------------------------------- */
 
 func getMinutesOrHoursInRelationToClosestEvent(nearestEvent *domain.Event) string {
 	minutesUntilNext := time.Until(nearestEvent.StartTime)

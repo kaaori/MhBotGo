@@ -26,11 +26,19 @@ CREATE TABLE IF NOT EXISTS Events (
         ); 
 
 CREATE TABLE IF NOT EXISTS Birthdays(
-    BirthdayID INTEGER Primary Key AUTOINCREMENT,
-    ServerID INTEGER,
-    UserID VARCHAR(20),
-    BirthMonthNum INTEGER,
-    BirthDayNum INTEGER,
+    BirthdayID 			INTEGER Primary Key AUTOINCREMENT,
+    ServerID            VARCHAR(20),
+    UserID 				VARCHAR(20),
+    BirthMonthNum 		INTEGER,
+    BirthDayNum 		INTEGER,
 
     FOREIGN KEY(ServerID) REFERENCES Servers(ServerID)
+);
+
+CREATE TABLE IF NOT EXISTS UserFacts (
+	UserID 			VARCHAR(20) UNIQUE,
+	FactContent		VARCHAR(2000),
+	LastUsedUnix	INTEGER,
+	
+	PRIMARY KEY (UserID)
 );

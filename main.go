@@ -83,7 +83,7 @@ func main() {
 	BotInstance.ClientSession.State.MaxMessageCount = 100
 	BotInstance.AnnouncementChannel = config.GetString("announcements")
 	BotInstance.ScheduleChannel = config.GetString("schedule")
-	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact()
+	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact(BotInstance.CurrentFact, false)
 	BotInstance.ClientSession.AddHandler(readyEvent)
 	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 

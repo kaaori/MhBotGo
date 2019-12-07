@@ -1,11 +1,17 @@
 package domain
 
+import (
+	"time"
+
+	"github.com/bwmarrin/discordgo"
+)
+
 // Fact : Object representation of json
 type Fact struct {
-	ID        string `json:"id"`
-	Text      string `json:"text"`
-	Source    string `json:"source"`
-	SourceURL string `json:"source_url"`
-	Language  string `json:"language"`
-	Permalink string `json:"permalink"`
+	UserID       string
+	FactContent  string
+	LastUsedUnix int64
+
+	LastUsedTime time.Time
+	User         *discordgo.User
 }

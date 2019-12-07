@@ -12,6 +12,7 @@ type Instance struct {
 	ServerDao     dao.DiscordServerDao
 	EventDao      dao.EventDao
 	BirthdayDao   dao.BirthdayDao
+	FactDao       dao.FactDao
 
 	AnnouncementChannel       string
 	ScheduleChannel           string
@@ -39,6 +40,7 @@ func InitBot(token string, dbLocation string) *Instance {
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}
 	inst.EventDao = dao.EventDao{Session: inst.ClientSession}
 	inst.BirthdayDao = dao.BirthdayDao{Session: inst.ClientSession}
+	inst.FactDao = dao.FactDao{Session: inst.ClientSession}
 	inst.HasClearedSchedule = false
 	inst.EventRunnerRoleName = viper.GetString("eventRunnerRole")
 	inst.EventAttendeeRoleName = viper.GetString("eventAttendeeRole")
