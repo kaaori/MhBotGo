@@ -685,23 +685,33 @@ func AuthAdmin(ctx *exrouter.Context) bool {
 
 // AuthEventRunner : Authenticates against bot roles in config
 func AuthEventRunner(ctx *exrouter.Context) bool {
+	return checkRoleByName(ctx, BotInstance.EventRunnerRoleName)
+}
+
+// GatedRole : Checks if the user has the gated role for commands
+func GatedRole(ctx *exrouter.Context) bool {
+	return checkRoleByName(ctx, BotInstance.GatedRoleName)
+}
+
+func checkRoleByName(ctx *exrouter.Context, roleName string) bool {
 	member, err := ctx.Member(ctx.Msg.GuildID, ctx.Msg.Author.ID)
 	if err != nil {
 		ctx.Reply("Could not fetch member: ", err)
 		return false
 	}
-	eventRunnerRole, err := FindRoleByName(ctx.Msg.GuildID, BotInstance.EventRunnerRoleName)
+	roleToCheck, err := FindRoleByName(ctx.Msg.GuildID, roleName)
 	if err != nil {
 		log.Error("Error getting role", err)
 	}
-	if eventRunnerRole == nil {
+	if roleToCheck == nil {
 		ctx.Reply("Oops, your server has not been configured properly!\n" +
-			"I can't find the role named `EventRunner`.")
+			"I can't find the role named `" + roleName + "`.")
 		return false
 	}
 
+	// Admin or has role
 	if MemberHasPermission(ctx.Ses, ctx.Msg.GuildID, ctx.Msg.Author.ID, 0x8) ||
-		sliceutil.Contains(member.Roles, eventRunnerRole.ID) {
+		sliceutil.Contains(member.Roles, roleToCheck.ID) {
 		return true
 	}
 
@@ -906,6 +916,7 @@ func SendSchedule(schedChannelID string, guildID string, inst *bot.Instance, isF
 	if schedMsg != nil && schedMsg.Content != "@everyone" {
 		inst.ClientSession.ChannelMessageDelete(schedMsg.ChannelID, schedMsg.ID)
 	}
+	ParseTemplate(guildID)
 
 	firstSched := false
 	if len(isFirstSchedOfWeek) > 0 {

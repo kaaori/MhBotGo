@@ -18,6 +18,7 @@ type Instance struct {
 	ScheduleChannel           string
 	HasClearedSchedule        bool
 	EventRunnerRoleName       string
+	GatedRoleName             string
 	EventAttendeeRoleName     string
 	CurrentFactTitle          string
 	CurrentFact               string
@@ -42,6 +43,7 @@ func InitBot(token string, dbLocation string) *Instance {
 	inst.BirthdayDao = dao.BirthdayDao{Session: inst.ClientSession}
 	inst.FactDao = dao.FactDao{Session: inst.ClientSession}
 	inst.HasClearedSchedule = false
+	inst.GatedRoleName = viper.GetString("gatedRoleName")
 	inst.EventRunnerRoleName = viper.GetString("eventRunnerRole")
 	inst.EventAttendeeRoleName = viper.GetString("eventAttendeeRole")
 

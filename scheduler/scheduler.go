@@ -125,6 +125,16 @@ func UpdateBirthdays(inst *bot.Instance) {
 				Content: content}
 			log.Trace("Updated birthday for  " + birthdayUser.Username)
 
+			// See if there's a fact for the user whos birthday it is
+			userFact, err := inst.FactDao.GetFactByUser(g, birthdayUser)
+			if userFact != nil && err == nil {
+				// Update the fact and refresh the schedule if it exists
+				log.Info("Birthday fact has been set, updating schedule")
+
+				inst.CurrentFact = userFact.User.Username + " says: " + userFact.FactContent
+				inst.CurrentFactTitle = "Did you know this about " + userFact.User.Username
+				commands.SendSchedule(schedChannel.ID, g.ID, inst)
+			}
 			go inst.ClientSession.ChannelMessageSendComplex(announcementChannel.ID, msg)
 		}
 	}
