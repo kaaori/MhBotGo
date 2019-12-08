@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"sync"
@@ -979,14 +980,32 @@ func getUserFact() *domain.Fact {
 	return fact
 }
 
+func deleteFact(ctx *exrouter.Context) bool {
+	return BotInstance.FactDao.DeleteFactByUserID(ctx.Msg.Author.ID)
+}
+
 func insertFact(ctx *exrouter.Context) *domain.Fact {
 	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
-	fact := BotInstance.FactDao.InsertFact(parseFact(ctx), ctx.Ses, guild)
-	return fact
+	originalFact := parseFact(ctx)
+	// Ensure users can't inject HTML
+	originalFact.FactContent = strip.StripTags(originalFact.FactContent)
+
+	// And any emoji are clipped from the content
+	emojiRegex := regexp.MustCompile("<(a)?:.*?:(.*?)>")
+	originalFact.FactContent = strip.StripTags(emojiRegex.ReplaceAllString(originalFact.FactContent, ""))
+	if originalFact != nil && originalFact.FactContent != "" {
+		fact := BotInstance.FactDao.InsertFact(originalFact, ctx.Ses, guild)
+		return fact
+	}
+	ctx.Reply("You need to enter a fact!\nExample: `!mh fact My Fact Here`")
+	return nil
 }
 
 func parseFact(ctx *exrouter.Context) *domain.Fact {
 	// Everything after "Prefix Fact"
+	if ctx.Args.After(1) == "" {
+		return nil
+	}
 	return &domain.Fact{
 		UserID:      ctx.Msg.Author.ID,
 		FactContent: ctx.Args.After(1)}

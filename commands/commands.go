@@ -81,8 +81,14 @@ func InstallCommands(instance *bot.Instance) {
 		fact := insertFact(ctx)
 		if fact != nil {
 			ctx.Reply("Ok, your fact has been inserted! <3\n`" + fact.FactContent + "`")
+		}
+	})
+
+	router.On("fact", nil).On("reset", func(ctx *exrouter.Context) {
+		if deleteFact(ctx) {
+			ctx.Reply("Ok, your set fact has been deleted!")
 		} else {
-			ctx.Reply("There was an issue setting your fact, please try again later")
+			ctx.Reply("Hmm, I couldn't find any facts by you.")
 		}
 	})
 
