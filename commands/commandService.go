@@ -23,7 +23,6 @@ import (
 	"github.com/kaaori/MhBotGo/profiler"
 	util "github.com/kaaori/MhBotGo/util"
 	"github.com/mmcdole/gofeed"
-	"github.com/snabb/isoweek"
 	config "github.com/spf13/viper"
 )
 
@@ -77,9 +76,6 @@ func ParseTemplate(guildID string) {
 	}
 
 	profiler.StopAndPrintSeconds("Template parsing")
-
-	year, week := time.Now().In(util.ServerLoc).ISOWeek()
-	t := isoweek.StartTime(year, week, time.Now().In(util.ServerLoc).Location())
 
 	profiler.Start()
 	g, _ := BotInstance.ClientSession.Guild(guildID)
@@ -230,8 +226,8 @@ func ParseTemplate(guildID string) {
 		break
 	}
 
-	_, isoWeek := t.ISOWeek()
-	firstDayOfWeek := util.FirstDayOfISOWeek(t.Year(), isoWeek, t.Location())
+	// _, isoWeek := t.ISOWeek()
+	firstDayOfWeek := util.GetCurrentWeekFromMondayAsTime()
 
 	// GOD ITS SO UGLY PLEASE MAKE IT STOP
 	weekEvts := make([][]*domain.EventView, 0)
@@ -715,7 +711,7 @@ func checkRoleByName(ctx *exrouter.Context, roleName string) bool {
 		return true
 	}
 
-	ctx.Reply("You don't have permission to use this command")
+	ctx.Reply("You don't have permission to use this command, you need `" + roleName + "` to do this.")
 	return false
 }
 
@@ -1004,7 +1000,13 @@ func insertFact(ctx *exrouter.Context) *domain.Fact {
 	// And any emoji are clipped from the content
 	emojiRegex := regexp.MustCompile("<(a)?:.*?:(.*?)>")
 	originalFact.FactContent = strip.StripTags(emojiRegex.ReplaceAllString(originalFact.FactContent, ""))
-	if originalFact != nil && originalFact.FactContent != "" {
+
+	if originalFact != nil && len(originalFact.FactContent) >= 500 {
+		ctx.Reply("Sorry, facts cannot be longer than 500 characters")
+		return nil
+	}
+
+	if originalFact.FactContent != "" {
 		fact := BotInstance.FactDao.InsertFact(originalFact, ctx.Ses, guild)
 		return fact
 	}
