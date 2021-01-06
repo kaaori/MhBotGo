@@ -7,7 +7,7 @@ import (
 	"github.com/kaaori/MhBotGo/profiler"
 )
 
-// BirthdayDao : Contains data access methods for stored user getFactFromStmt
+// FactDao : Contains data access methods for stored user fact
 type FactDao struct {
 	Session *discordgo.Session
 }
@@ -18,6 +18,21 @@ func (d *FactDao) GetFactByUser(g *discordgo.Guild, u *discordgo.User) (*domain.
 	defer DB.Close()
 
 	query := "select * from UserFacts where UserID = ? limit 1"
+	stmt, err := queryForRows(query, DB, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	return getFactFromStmt(stmt, d, g)
+}
+
+// GetRandomFact : Gets a random fact
+func (d *FactDao) GetRandomFact(g *discordgo.Guild, u *discordgo.User) (*domain.Fact, error) {
+	DB := GetConnection(ConnString)
+	defer DB.Close()
+
+	query := "select * from UserFacts order by RANDOM() limit 1"
 	stmt, err := queryForRows(query, DB, u.ID)
 	if err != nil {
 		return nil, err
@@ -45,7 +60,8 @@ func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session, g *discord
 	}
 	defer stmt.Close()
 
-	err = stmt.Exec(fact.UserID, fact.FactContent, fact.LastUsedUnix)
+	// Default 0 unix time for last used time
+	err = stmt.Exec(fact.UserID, fact.FactContent, 0)
 	if err != nil {
 		log.Error("Error inserting fact", err)
 		return nil
@@ -54,9 +70,9 @@ func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session, g *discord
 	return fact
 }
 
-// UpdateBirthdayByUser : Updates a fact by object
+// UpdateFactByUser : Updates a fact by object
 // Returns user ID of fact
-func (d *FactDao) UpdateBirthdayByUser(fact *domain.Fact, u *discordgo.User) string {
+func (d *FactDao) UpdateFactByUser(fact *domain.Fact, u *discordgo.User) string {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
@@ -83,7 +99,7 @@ func (d *FactDao) UpdateBirthdayByUser(fact *domain.Fact, u *discordgo.User) str
 
 // DeleteFactByUserID : Deletes a fact by given user ID
 // Returns ID of deleted fact
-func (d *FactDao) DeleteFactByUserID(discordID string) int64 {
+func (d *FactDao) DeleteFactByUserID(discordID string) bool {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
@@ -92,13 +108,13 @@ func (d *FactDao) DeleteFactByUserID(discordID string) int64 {
 
 	stmt, err := DB.Prepare(query, discordID)
 	if err != nil {
-		return -1
+		return false
 	}
 
 	defer stmt.Close()
 
 	stmt.Exec()
-	return DB.LastInsertRowID()
+	return true
 }
 
 func mapRowToFact(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild) (*domain.Fact, error) {
@@ -152,10 +168,10 @@ func processStmtForFactArray(stmt *sqlite3.Stmt, d *FactDao, g *discordgo.Guild)
 }
 
 func processStmtForFact(stmt *sqlite3.Stmt, d *FactDao, g *discordgo.Guild) (*domain.Fact, error) {
-	birthday, err := getFactFromStmt(stmt, d, g)
+	fact, err := getFactFromStmt(stmt, d, g)
 	if err != nil {
 		stmt.Close()
 		return nil, err
 	}
-	return birthday, err
+	return fact, err
 }
