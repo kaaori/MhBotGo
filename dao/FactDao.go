@@ -1,6 +1,8 @@
 package dao
 
 import (
+	"time"
+
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kaaori/MhBotGo/domain"
@@ -13,7 +15,7 @@ type FactDao struct {
 }
 
 // GetFactByUser : Gets a fact by a user ID
-func (d *FactDao) GetFactByUser(g *discordgo.Guild, u *discordgo.User) (*domain.Fact, error) {
+func (d *FactDao) GetFactByUser(u *discordgo.User) (*domain.Fact, error) {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
@@ -24,26 +26,26 @@ func (d *FactDao) GetFactByUser(g *discordgo.Guild, u *discordgo.User) (*domain.
 	}
 	defer stmt.Close()
 
-	return getFactFromStmt(stmt, d, g)
+	return getFactFromStmt(stmt, d)
 }
 
 // GetRandomFact : Gets a random fact
-func (d *FactDao) GetRandomFact(g *discordgo.Guild, u *discordgo.User) (*domain.Fact, error) {
+func (d *FactDao) GetRandomFact() (*domain.Fact, error) {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
 	query := "select * from UserFacts order by RANDOM() limit 1"
-	stmt, err := queryForRows(query, DB, u.ID)
+	stmt, err := queryForRows(query, DB)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	return getFactFromStmt(stmt, d, g)
+	return getFactFromStmt(stmt, d)
 }
 
 // InsertFact : Insert a new fact
-func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session, g *discordgo.Guild) *domain.Fact {
+func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session) *domain.Fact {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
@@ -117,7 +119,7 @@ func (d *FactDao) DeleteFactByUserID(discordID string) bool {
 	return true
 }
 
-func mapRowToFact(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild) (*domain.Fact, error) {
+func mapRowToFact(rows *sqlite3.Stmt, s *discordgo.Session) (*domain.Fact, error) {
 	fact := new(domain.Fact)
 
 	err := rows.Scan(
@@ -133,7 +135,7 @@ func mapRowToFact(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild) 
 	return fact, err
 }
 
-func getFactFromStmt(stmt *sqlite3.Stmt, d *FactDao, g *discordgo.Guild) (*domain.Fact, error) {
+func getFactFromStmt(stmt *sqlite3.Stmt, d *FactDao) (*domain.Fact, error) {
 	hasRow, err := stmt.Step()
 	if err != nil {
 		return nil, err
@@ -142,17 +144,31 @@ func getFactFromStmt(stmt *sqlite3.Stmt, d *FactDao, g *discordgo.Guild) (*domai
 	if !hasRow {
 		return nil, nil
 	}
-	fact, err := mapRowToFact(stmt, d.Session, g)
+
+	fact, err := mapRowToFact(stmt, d.Session)
+	if err != nil {
+		return nil, err
+	}
+
+	fact, err = mapFactORMFields(fact, d.Session)
 	if err != nil {
 		return nil, err
 	}
 	return fact, err
 }
 
-func processStmtForFactArray(stmt *sqlite3.Stmt, d *FactDao, g *discordgo.Guild) ([]*domain.Fact, error) {
+func mapFactORMFields(fact *domain.Fact, s *discordgo.Session) (*domain.Fact, error) {
+
+	fact.User, _ = s.User(fact.UserID)
+	fact.LastUsedTime = time.Unix(fact.LastUsedUnix, 0)
+
+	return fact, nil
+}
+
+func processStmtForFactArray(stmt *sqlite3.Stmt, d *FactDao) ([]*domain.Fact, error) {
 	facts := make([]*domain.Fact, 0)
 	for {
-		fact, err := getFactFromStmt(stmt, d, g)
+		fact, err := getFactFromStmt(stmt, d)
 		if err != nil {
 			return nil, err
 		}
@@ -167,8 +183,8 @@ func processStmtForFactArray(stmt *sqlite3.Stmt, d *FactDao, g *discordgo.Guild)
 	return facts, nil
 }
 
-func processStmtForFact(stmt *sqlite3.Stmt, d *FactDao, g *discordgo.Guild) (*domain.Fact, error) {
-	fact, err := getFactFromStmt(stmt, d, g)
+func processStmtForFact(stmt *sqlite3.Stmt, d *FactDao) (*domain.Fact, error) {
+	fact, err := getFactFromStmt(stmt, d)
 	if err != nil {
 		stmt.Close()
 		return nil, err

@@ -16,6 +16,7 @@ import (
 	config "github.com/spf13/viper"
 
 	"github.com/bwmarrin/discordgo"
+	dg "github.com/bwmarrin/discordgo"
 
 	logging "github.com/kaaori/mhbotgo/log"
 )
@@ -81,12 +82,14 @@ func main() {
 
 	BotInstance = bot.InitBot(Token, config.GetString("dbLocation"))
 	BotInstance.ClientSession.State.MaxMessageCount = 100
+	BotInstance.ClientSession.Identify.Intents = dg.MakeIntent(dg.IntentsAll)
 	BotInstance.AnnouncementChannel = config.GetString("announcements")
 	BotInstance.ScheduleChannel = config.GetString("schedule")
-	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact(BotInstance.CurrentFact, false)
+	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact(BotInstance, BotInstance.CurrentFact, false)
 	BotInstance.ClientSession.AddHandler(readyEvent)
 	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 
+	// Install command routing
 	commands.InstallCommands(BotInstance)
 
 	err := BotInstance.ClientSession.Open()

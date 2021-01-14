@@ -28,6 +28,9 @@ type Instance struct {
 // InitBot : Initialise a bot instance
 func InitBot(token string, dbLocation string) *Instance {
 	inst := new(Instance)
+	if inst == nil {
+		panic("Can't find instance")
+	}
 
 	inst.ScheduleMessagesByGuildID = make(map[string]string)
 
@@ -36,6 +39,8 @@ func InitBot(token string, dbLocation string) *Instance {
 		log.Error("Error creating session\n", err)
 		return nil
 	}
+
+	discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 
 	inst.ClientSession = discord
 	inst.ServerDao = dao.DiscordServerDao{Session: inst.ClientSession}

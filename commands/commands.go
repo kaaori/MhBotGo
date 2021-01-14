@@ -57,7 +57,7 @@ func InstallCommands(instance *bot.Instance) {
 		if !AuthEventRunner(ctx) {
 			return
 		}
-		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance.CurrentFact, false)
+		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance, BotInstance.CurrentFact, false)
 		ctx.Reply("Ok, fact has been updated if a newer one is available <3\n`" + BotInstance.CurrentFact + "`")
 	})
 
@@ -65,7 +65,7 @@ func InstallCommands(instance *bot.Instance) {
 		if !AuthEventRunner(ctx) {
 			return
 		}
-		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance.CurrentFact, true)
+		BotInstance.CurrentFactTitle, BotInstance.CurrentFact = GetNewFact(BotInstance, BotInstance.CurrentFact, true)
 		ctx.Reply("Ok, fact has been updated if a newer one is available <3\n`" + BotInstance.CurrentFact + "`")
 	})
 
@@ -186,6 +186,5 @@ func InstallCommands(instance *bot.Instance) {
 			router.FindAndExecute(session, prefix, session.State.User.ID, m.Message)
 		}
 	})
-
 	log.Info("Commands installed.")
 }

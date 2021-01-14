@@ -734,18 +734,18 @@ func findRoleByID(ctx *exrouter.Context, roleID string) (*discordgo.Role, error)
 // If the fact has not changed since the last time it was checked, it will fallback to a user fact
 // And if a user fact cannot be found, then it will default to an explanation to encourage users to enter their own facts
 // about themselves
-func GetNewFact(currentFact string, isUserFact bool) (string, string) {
+func GetNewFact(inst *bot.Instance, currentFact string, isUserFact bool) (string, string) {
 	log.Info("Updating fact...")
 
 	//build request
 	fp := gofeed.NewParser()
 	feed, err := fp.ParseURL(config.GetString("RssLink"))
 	if err != nil || isUserFact {
-		return fallbackGetUserFactOrDefault(err)
+		return fallbackGetUserFactOrDefault(inst, err)
 	}
 
 	if len(feed.Items) <= 0 {
-		return fallbackGetUserFactOrDefault(nil)
+		return fallbackGetUserFactOrDefault(inst, nil)
 	}
 
 	curItem := feed.Items[0]
@@ -754,15 +754,15 @@ func GetNewFact(currentFact string, isUserFact bool) (string, string) {
 
 	// If the content is empty (video link) or is the same as the last acquired fact
 	if len(content) <= 0 || content == currentFact {
-		return fallbackGetUserFactOrDefault(nil)
+		return fallbackGetUserFactOrDefault(inst, nil)
 	}
 
 	return title, content
 }
 
-func fallbackGetUserFactOrDefault(err error) (string, string) {
+func fallbackGetUserFactOrDefault(inst *bot.Instance, err error) (string, string) {
 	log.Error("Getting user fact instead of normal fact", err)
-	userFact := getUserFact()
+	userFact := getUserFact(inst)
 	if userFact == nil {
 		return "There was an issue getting the fact.", "Sorry! There's been an issue getting the fact for today ;-;<br/>" +
 			"If you want to enter in a fact about yourself, do so with the command !mh fact \"Fact about me\" to enter it into the rotation!<br/>" +
@@ -789,12 +789,13 @@ func FindRoleByName(guildID string, roleName string) (*discordgo.Role, error) {
 
 // FindSchedChannel : Finds the schedule channel for a given guild
 func FindSchedChannel(inst *bot.Instance, guildID string) *discordgo.Channel {
-	guild, err := inst.ClientSession.Guild(guildID)
+	guildChannels, err := inst.ClientSession.GuildChannels(guildID)
 	if err != nil {
-		log.Error("Error in test command ", err)
+		log.Error("Error while fetching guild ", err)
 	}
+
 	var schedChannel *discordgo.Channel
-	for _, schedChannel = range guild.Channels {
+	for _, schedChannel = range guildChannels {
 		if schedChannel.Name == inst.ScheduleChannel {
 			break
 		}
@@ -979,8 +980,8 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 }
 
 /* ------------- User Facts ------------- */
-func getUserFact() *domain.Fact {
-	fact, err := BotInstance.FactDao.GetRandomFact()
+func getUserFact(inst *bot.Instance) *domain.Fact {
+	fact, err := inst.FactDao.GetRandomFact()
 	if err != nil || fact == nil {
 		return nil
 	}
@@ -992,7 +993,7 @@ func deleteFact(ctx *exrouter.Context) bool {
 }
 
 func insertFact(ctx *exrouter.Context) *domain.Fact {
-	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
+	// guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
 	originalFact := parseFact(ctx)
 	// Ensure users can't inject HTML
 	originalFact.FactContent = strip.StripTags(originalFact.FactContent)
@@ -1007,7 +1008,7 @@ func insertFact(ctx *exrouter.Context) *domain.Fact {
 	}
 
 	if originalFact.FactContent != "" {
-		fact := BotInstance.FactDao.InsertFact(originalFact, ctx.Ses, guild)
+		fact := BotInstance.FactDao.InsertFact(originalFact, ctx.Ses)
 		return fact
 	}
 	ctx.Reply("You need to enter a fact!\nExample: `!mh fact My Fact Here`")

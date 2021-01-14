@@ -126,7 +126,7 @@ func UpdateBirthdays(inst *bot.Instance) {
 			log.Trace("Updated birthday for  " + birthdayUser.Username)
 
 			// See if there's a fact for the user whos birthday it is
-			userFact, err := inst.FactDao.GetFactByUser(g, birthdayUser)
+			userFact, err := inst.FactDao.GetFactByUser(birthdayUser)
 			if userFact != nil && err == nil {
 				// Update the fact and refresh the schedule if it exists
 				log.Info("Birthday fact has been set, updating schedule")
@@ -235,7 +235,7 @@ func UpdateFact(inst *bot.Instance) {
 			fmt.Printf("Panic deferred in scheduler: %s\n", err)
 		}
 	}()
-	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact(inst.CurrentFact, false)
+	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact(inst, inst.CurrentFact, false)
 	for _, g := range inst.ClientSession.State.Guilds {
 
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
