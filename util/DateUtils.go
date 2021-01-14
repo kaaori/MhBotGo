@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/snabb/isoweek"
+	config "github.com/spf13/viper"
 )
 
 var (
@@ -35,6 +36,6 @@ func init() {
 // GetCurrentWeekFromMondayAsTime : Gets the time object representing the current week starting @ monday
 func GetCurrentWeekFromMondayAsTime() time.Time {
 	_, week := time.Now().ISOWeek()
-	return isoweek.StartTime(time.Now().Year(), week, ServerLoc)
+	return isoweek.StartTime(time.Now().Year()+config.GetInt("weekStartOffset"), week, ServerLoc)
 	// return FirstDayOfISOWeek(time.Now().Year(), week, ServerLoc)
 }

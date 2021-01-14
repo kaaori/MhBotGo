@@ -15,5 +15,6 @@
     "eventAttendeeRole": "Event Attendees",
     "isTodayTargeted": false,
     "isScheduleTargeted": false,
-    "RssLink": "https://unbelievablefactsblog.com/rss#_=_"
+    "RssLink": "https://unbelievablefactsblog.com/rss#_=_",
+    "weekStartOffset": 0
 }

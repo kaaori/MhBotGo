@@ -85,7 +85,7 @@ func main() {
 	BotInstance.ClientSession.Identify.Intents = dg.MakeIntent(dg.IntentsAll)
 	BotInstance.AnnouncementChannel = config.GetString("announcements")
 	BotInstance.ScheduleChannel = config.GetString("schedule")
-	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact(BotInstance, BotInstance.CurrentFact, false)
+	BotInstance.CurrentFactTitle, BotInstance.CurrentFact = commands.GetNewFact(BotInstance, "I'm still waking up", false)
 	BotInstance.ClientSession.AddHandler(readyEvent)
 	BotInstance.ClientSession.AddHandler(guildJoinEvent)
 
