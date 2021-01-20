@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -28,7 +29,7 @@ func CycleEventStatsAsStatus(inst *Instance) {
 		defer func() {
 			if err := recover(); err != nil {
 				// if we're in here, we had a panic and have caught it
-				fmt.Printf("Panic deferred in scheduler: %s\n", err)
+				fmt.Printf("Panic deferred in Cycling events as status: %s\n%s", err, string(debug.Stack()))
 			}
 		}()
 
@@ -60,7 +61,7 @@ func CycleEventParamsAsStatus(evt *domain.Event, inst *Instance) {
 		defer func() {
 			if err := recover(); err != nil {
 				// if we're in here, we had a panic and have caught it
-				fmt.Printf("Panic deferred in scheduler: %s\n", err)
+				fmt.Printf("Panic deferred in Cycling Event params as status: %s\n%s", err, string(debug.Stack()))
 			}
 		}()
 

@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -43,7 +44,7 @@ func procEventLoop(inst *bot.Instance) {
 		defer func() {
 			if err := recover(); err != nil {
 				// if we're in here, we had a panic and have caught it
-				fmt.Printf("Panic deferred in scheduler: %s\n", err)
+				fmt.Printf("Panic deferred in scheduler Event loop: %s\n%s", err, string(debug.Stack()))
 			}
 		}()
 
@@ -62,7 +63,7 @@ func UpdateBirthdays(inst *bot.Instance) {
 	defer func() {
 		if err := recover(); err != nil {
 			// if we're in here, we had a panic and have caught it
-			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+			fmt.Printf("Panic deferred in Update Birthday: %s\n%s", err, string(debug.Stack()))
 		}
 	}()
 	for _, g := range inst.ClientSession.State.Guilds {
@@ -145,7 +146,7 @@ func UpdateSchedule(inst *bot.Instance) {
 	defer func() {
 		if err := recover(); err != nil {
 			// if we're in here, we had a panic and have caught it
-			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+			fmt.Printf("Panic deferred in Updating Scheduler: %s\n%s", err, string(debug.Stack()))
 		}
 	}()
 	for _, g := range inst.ClientSession.State.Guilds {
@@ -163,7 +164,7 @@ func WeeklyEvents(inst *bot.Instance) {
 	defer func() {
 		if err := recover(); err != nil {
 			// if we're in here, we had a panic and have caught it
-			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+			fmt.Printf("Panic deferred in Weekly Events post: %s\n%s", err, string(debug.Stack()))
 		}
 	}()
 	ClearSchedulesAndMakeEveryoneMad(inst)
@@ -174,7 +175,7 @@ func PingEveryoneInScheduleChannel(guildID string, channelID string, s *discordg
 	defer func() {
 		if err := recover(); err != nil {
 			// if we're in here, we had a panic and have caught it
-			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+			fmt.Printf("Panic deferred in Ping all for Schedule: %s\n%s", err, string(debug.Stack()))
 		}
 	}()
 	_, err := s.ChannelMessageSend(channelID, "@everyone")
@@ -190,7 +191,7 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 	defer func() {
 		if err := recover(); err != nil {
 			// if we're in here, we had a panic and have caught it
-			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+			fmt.Printf("Panic deferred in Clearing schedules and angering the masses: %s\n%s", err, string(debug.Stack()))
 		}
 	}()
 	log.Info("Clearing schedules.")
@@ -232,7 +233,7 @@ func UpdateFact(inst *bot.Instance) {
 	defer func() {
 		if err := recover(); err != nil {
 			// if we're in here, we had a panic and have caught it
-			fmt.Printf("Panic deferred in scheduler: %s\n", err)
+			fmt.Printf("Panic deferred in Updating fact: %s\n%s", err, string(debug.Stack()))
 		}
 	}()
 	inst.CurrentFactTitle, inst.CurrentFact = commands.GetNewFact(inst, inst.CurrentFact, false)
