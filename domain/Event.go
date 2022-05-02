@@ -45,7 +45,7 @@ func (e *Event) ToString() string {
 // ToEmbedString : Provides a pretty-print string for the event in a discord embed
 // Server Loc offset is calculated here as this is before it touches the DB and is adjusted
 func (e *Event) ToEmbedString() string {
-	return "• *<t:" + e.StartTime.Format(time.Kitchen) +
+	return "• *<t:" + strconv.FormatInt(e.StartTime.Unix(), 10) +
 		">* ── **" + strip.StripTags(emojiRegex.ReplaceAllString(e.EventName, "")) + "** ── (Hosted  by ***" + strip.StripTags(emojiRegex.ReplaceAllString(e.HostName, "")) +
 		"*** in " + strip.StripTags(emojiRegex.ReplaceAllString(e.EventLocation, "")) + ")"
 }
