@@ -6,7 +6,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	strip "github.com/grokify/html-strip-tags-go"
-	"github.com/kaaori/MhBotGo/util"
+	"mhbotgo.com/util"
 )
 
 // Birthday : Holds the relevant information for a user's birthday

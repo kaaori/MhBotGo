@@ -1,6 +1,8 @@
 package util
 
 import (
+	"log"
+
 	"github.com/bwmarrin/discordgo"
 )
 
@@ -14,7 +16,7 @@ var (
 )
 
 func init() {
-	log.Info("Initialising RPC Client")
+	log.Println("Initialising RPC Client")
 }
 
 // GetEmbed : Get Embed by parameters

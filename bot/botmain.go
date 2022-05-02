@@ -1,9 +1,11 @@
 package bot
 
 import (
+	"log"
+
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/MhBotGo/dao"
 	"github.com/spf13/viper"
+	"mhbotgo.com/dao"
 )
 
 // Instance : The current instance of the bot and its session
@@ -36,7 +38,7 @@ func InitBot(token string, dbLocation string) *Instance {
 
 	discord, err := discordgo.New("Bot " + token)
 	if err != nil {
-		log.Error("Error creating session\n", err)
+		log.Fatal("Error creating session\n", err)
 		return nil
 	}
 

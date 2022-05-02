@@ -2,19 +2,19 @@ package commands
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/Necroforger/dgrouter/exrouter"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/MhBotGo/bot"
-	"github.com/kaaori/MhBotGo/util"
-	logging "github.com/kaaori/mhbotgo/log"
 	config "github.com/spf13/viper"
+	"mhbotgo.com/bot"
+
+	"mhbotgo.com/util"
 )
 
 var (
 	prefix    string
-	log       = logging.NewLog()
 	session   *discordgo.Session
 	authRoles []string
 
@@ -186,5 +186,5 @@ func InstallCommands(instance *bot.Instance) {
 			router.FindAndExecute(session, prefix, session.State.User.ID, m.Message)
 		}
 	})
-	log.Info("Commands installed.")
+	log.Println("Commands installed.")
 }

@@ -3,28 +3,26 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"regexp"
 	"syscall"
 
-	"github.com/kaaori/MhBotGo/scheduler"
+	"mhbotgo.com/scheduler"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/kaaori/MhBotGo/bot"
-	"github.com/kaaori/MhBotGo/commands"
 	config "github.com/spf13/viper"
+	"mhbotgo.com/bot"
+	"mhbotgo.com/commands"
 
 	"github.com/bwmarrin/discordgo"
 	dg "github.com/bwmarrin/discordgo"
-
-	logging "github.com/kaaori/mhbotgo/log"
 )
 
 var (
 	// Token is the Bot token for discord auth
 	Token        string
-	log          = logging.NewLog()
 	emojiRegex   = regexp.MustCompile("<(a)?:.*?:(.*?)>")
 	userIDRegex  = regexp.MustCompile("<@!?([0-9]+)>")
 	channelRegex = regexp.MustCompile("<#([0-9]+)>")
@@ -48,16 +46,16 @@ func initViper(configFilePath string) {
 	config.WatchConfig()
 
 	config.OnConfigChange(func(e fsnotify.Event) {
-		log.Info("Config has been updated.")
+		log.Println("Config has been updated.")
 	})
 
 	if err := config.ReadInConfig(); err != nil {
 		if _, ok := err.(config.ConfigFileNotFoundError); ok {
-			log.Error("Config file not found!\n\t\tEnsure file ./configs/config.json exists", err)
+			log.Fatal("Config file not found!\n\t\tEnsure file ./configs/config.json exists", err)
 			os.Exit(404)
 		} else {
 			// Config file was found but another error was produced
-			log.Error("Fatal error in loading config:\n\t\t", err)
+			log.Fatal("Fatal error in loading config:\n\t\t", err)
 			return
 		}
 	}
@@ -67,16 +65,16 @@ func initDbForGuild(guild *discordgo.GuildCreate) {
 	if rowsAffected := BotInstance.ServerDao.InsertNewServer(guild.ID); rowsAffected < 0 {
 		return
 	}
-	log.Info("DB Initialised for guild " + guild.Name)
+	log.Println("DB Initialised for guild " + guild.Name)
 }
 
 func main() {
 	initViper("./configs/config.json")
-	log.Info("======================/ MH Bot Starting \\======================")
-	// log.Info("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
+	log.Println("======================/ MH Bot Starting \\======================")
+	// log.Println("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
 
 	if _, err := os.Stat(config.GetString("dbLocation")); err != nil {
-		log.Error("DB Not found. Creating in " + config.GetString("dbLocation"))
+		log.Fatal("DB Not found. Creating in " + config.GetString("dbLocation"))
 		bot.ReadDML(config.GetString("dbLocation"))
 	}
 
@@ -94,7 +92,7 @@ func main() {
 
 	err := BotInstance.ClientSession.Open()
 	if err != nil {
-		log.Error("Error opening connection\n", err)
+		log.Fatal("Error opening connection\n", err)
 		return
 	}
 	// Defer the session cleanup until the application is closed

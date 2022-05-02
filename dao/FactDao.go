@@ -1,12 +1,13 @@
 package dao
 
 import (
+	"log"
 	"time"
 
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/MhBotGo/domain"
-	"github.com/kaaori/MhBotGo/profiler"
+	"mhbotgo.com/domain"
+	"mhbotgo.com/profiler"
 )
 
 // FactDao : Contains data access methods for stored user fact
@@ -56,7 +57,7 @@ func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session) *domain.Fa
 
 	stmt, err := DB.Prepare(query)
 	if err != nil {
-		log.Error("Error inserting server", err)
+		log.Fatal("Error inserting server", err)
 
 		return nil
 	}
@@ -65,7 +66,7 @@ func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session) *domain.Fa
 	// Default 0 unix time for last used time
 	err = stmt.Exec(fact.UserID, fact.FactContent, 0)
 	if err != nil {
-		log.Error("Error inserting fact", err)
+		log.Fatal("Error inserting fact", err)
 		return nil
 	}
 
@@ -89,7 +90,7 @@ func (d *FactDao) UpdateFactByUser(fact *domain.Fact, u *discordgo.User) string 
 	stmt, err := DB.Prepare(query,
 		fact.UserID, fact.FactContent, fact.LastUsedUnix)
 	if err != nil {
-		log.Error("Error updating fact", err)
+		log.Fatal("Error updating fact", err)
 		return "-1"
 	}
 	defer stmt.Close()

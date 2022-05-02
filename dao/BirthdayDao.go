@@ -1,12 +1,13 @@
 package dao
 
 import (
+	"log"
 	"time"
 
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/MhBotGo/domain"
-	"github.com/kaaori/MhBotGo/profiler"
+	"mhbotgo.com/domain"
+	"mhbotgo.com/profiler"
 )
 
 // BirthdayDao : Contains data access methods for stored user birthdays
@@ -74,7 +75,7 @@ func (d *BirthdayDao) InsertBirthday(birthday *domain.Birthday, s *discordgo.Ses
 
 	stmt, err := DB.Prepare(query)
 	if err != nil {
-		log.Error("Error inserting server", err)
+		log.Fatal("Error inserting server", err)
 
 		return nil
 	}
@@ -83,13 +84,13 @@ func (d *BirthdayDao) InsertBirthday(birthday *domain.Birthday, s *discordgo.Ses
 	// We need to increment the birthday by 1 due to how it's being parsed
 	err = stmt.Exec(birthday.ServerID, birthday.GuildUserID, birthday.BirthdayMonth, birthday.BirthdayDay, time.Now().Unix())
 	if err != nil {
-		log.Error("Error inserting birthday", err)
+		log.Fatal("Error inserting birthday", err)
 		return nil
 	}
 
 	birthday, err = mapBirthdayORMFields(birthday, s, g)
 	if err != nil {
-		log.Error("Error mapping ORM fields in new birthday", err)
+		log.Fatal("Error mapping ORM fields in new birthday", err)
 		return nil
 	}
 	birthday.BirthdayID = DB.LastInsertRowID()
@@ -116,7 +117,7 @@ func (d *BirthdayDao) UpdateBirthdayByUser(birthday *domain.Birthday, u *discord
 	stmt, err := DB.Prepare(query,
 		birthday.ServerID, birthday.GuildUserID, birthday.BirthdayMonth, birthday.BirthdayDay, time.Now().Unix(), u.ID)
 	if err != nil {
-		log.Error("Error updating birthday", err)
+		log.Fatal("Error updating birthday", err)
 		return -1
 	}
 	defer stmt.Close()
@@ -164,7 +165,7 @@ func mapRowToBirthday(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Gui
 
 	birthday, err = mapBirthdayORMFields(birthday, s, g)
 	if err != nil {
-		log.Error("Error mapping ORM Fields in event", err)
+		log.Fatal("Error mapping ORM Fields in event", err)
 		return nil, err
 	}
 	profiler.StopAndPrintSeconds("Mapping ORM fields")

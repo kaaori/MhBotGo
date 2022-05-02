@@ -2,6 +2,7 @@ package dao
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 )
@@ -23,7 +24,7 @@ func queryForRows(query string, db *sqlite3.Conn, args ...interface{}) (*sqlite3
 	stmt, err := db.Prepare(query, args...)
 	if err != nil {
 		stmt.Close()
-		log.Error("Error querying: ", err)
+		log.Fatal("Error querying: ", err)
 		return nil, err
 	}
 	defer func() {

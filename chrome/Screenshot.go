@@ -3,11 +3,10 @@ package chrome
 import (
 	"context"
 	"io/ioutil"
+	"log"
 	"math"
 	"sync"
 	"time"
-
-	logging "github.com/kaaori/mhbotgo/log"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
@@ -17,7 +16,6 @@ import (
 var (
 	ctx chromedp.Context
 	mtx sync.Mutex
-	log = logging.NewLog()
 )
 
 // Init : Initialises a chrome instance
@@ -41,17 +39,17 @@ func TakeScreenshot(w int64, h int64, element string, fileName string, urlString
 	if isTargeted {
 		if err := chromedp.Run(ctx, elementScreenshot(urlString,
 			element, &buf)); err != nil {
-			log.Error("Error setting device metrics: ", err)
+			log.Fatal("Error setting device metrics: ", err)
 		}
 	} else {
 		if err := chromedp.Run(ctx, fullScreenshot(urlString,
 			100, &buf, w, h)); err != nil {
-			log.Error("Error setting device metrics: ", err)
+			log.Fatal("Error setting device metrics: ", err)
 		}
 	}
 
 	if err := ioutil.WriteFile(fileName, buf, 0644); err != nil {
-		log.Error("Error writing file: ", err)
+		log.Fatal("Error writing file: ", err)
 	}
 }
 
@@ -76,7 +74,7 @@ func fullScreenshot(urlstr string, quality int64, res *[]byte, w int64, h int64)
 		chromedp.Navigate(urlstr),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			// get layout metrics
-			_, _, contentSize, err := page.GetLayoutMetrics().Do(ctx)
+			_, _, _, _, _, contentSize, err := page.GetLayoutMetrics().Do(ctx)
 			if err != nil {
 				return err
 			}

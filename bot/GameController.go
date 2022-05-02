@@ -2,13 +2,14 @@ package bot
 
 import (
 	"fmt"
+	"log"
 	"runtime/debug"
 	"strconv"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/MhBotGo/domain"
-	"github.com/kaaori/MhBotGo/util"
+	"mhbotgo.com/domain"
+	"mhbotgo.com/util"
 )
 
 var (
@@ -18,8 +19,8 @@ var (
 
 // SetBotGame : Sets the bot's status to playing a game when an event is passed, or just a game if not
 func (inst *Instance) SetBotGame(s *discordgo.Session, game string) {
-	if err := s.UpdateStatus(0, game); err != nil {
-		log.Error("Error setting game", err)
+	if err := s.UpdateGameStatus(0, game); err != nil {
+		log.Fatal("Error setting game", err)
 	}
 }
 

@@ -1,13 +1,14 @@
 package dao
 
 import (
+	"log"
 	"time"
 
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kaaori/MhBotGo/domain"
-	"github.com/kaaori/MhBotGo/profiler"
-	"github.com/kaaori/MhBotGo/util"
+	"mhbotgo.com/domain"
+	"mhbotgo.com/profiler"
+	"mhbotgo.com/util"
 )
 
 // EventDao : Contains data access methods for stored server events
@@ -217,7 +218,7 @@ func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
 		event.CreationTimestamp, event.StartTimestamp, event.LastAnnouncementTimestamp, event.DurationMinutes,
 		event.EventID)
 	if err != nil {
-		log.Error("Error updating event", err)
+		log.Fatal("Error updating event", err)
 		return -1
 	}
 	defer stmt.Close()
@@ -238,7 +239,7 @@ func (d *EventDao) DeleteEventByID(ID int64) int64 {
 
 	stmt, err := DB.Prepare(query, ID)
 	if err != nil {
-		log.Error("Error deleting event")
+		log.Fatal("Error deleting event")
 		return -1
 	}
 	stmt.Exec()
@@ -299,7 +300,7 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session, g *dis
 
 	stmt, err := DB.Prepare(query)
 	if err != nil {
-		log.Error("Error inserting server", err)
+		log.Fatal("Error inserting server", err)
 
 		return nil
 	}
@@ -308,13 +309,13 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session, g *dis
 	err = stmt.Exec(event.ServerID, event.CreatorID, event.EventName, event.EventLocation, event.HostName,
 		event.CreationTimestamp, event.StartTimestamp, -1, event.DurationMinutes)
 	if err != nil {
-		log.Error("Error inserting event", err)
+		log.Fatal("Error inserting event", err)
 		return nil
 	}
 
 	event, err = mapEventORMFields(event, s, g)
 	if err != nil {
-		log.Error("Error mapping ORM fields in new event", err)
+		log.Fatal("Error mapping ORM fields in new event", err)
 		return nil
 	}
 	event.EventID = DB.LastInsertRowID()
@@ -343,7 +344,7 @@ func mapRowToEvent(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild)
 
 	event, err = mapEventORMFields(event, s, g)
 	if err != nil {
-		log.Error("Error mapping ORM Fields in event", err)
+		log.Fatal("Error mapping ORM Fields in event", err)
 		return nil, err
 	}
 	profiler.StopAndPrintSeconds("Mapping ORM fields")
@@ -377,7 +378,7 @@ func getCountFromStmt(stmt *sqlite3.Stmt) int {
 	}
 
 	if !hasRow {
-		log.Error("No events found")
+		log.Fatal("No events found")
 		return 0
 	}
 	var count int

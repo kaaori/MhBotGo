@@ -1,15 +1,13 @@
 package profiler
 
 import (
+	"log"
 	"strconv"
 	"time"
-
-	logging "github.com/kaaori/mhbotgo/log"
 )
 
 var (
 	debug     = false
-	log       = logging.NewLog()
 	startTime time.Time
 )
 
@@ -24,7 +22,7 @@ func StopAndPrintSeconds(msg string) {
 	if !debug {
 		return
 	}
-	log.Trace(msg + " -- Time taken: " + strconv.Itoa(int(time.Since(startTime).Seconds())) + " seconds~")
+	log.Println(msg + " -- Time taken: " + strconv.Itoa(int(time.Since(startTime).Seconds())) + " seconds~")
 	startTime = time.Now()
 }
 
