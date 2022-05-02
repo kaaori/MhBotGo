@@ -67,7 +67,7 @@ func UpdateBirthdays(inst *bot.Instance) {
 	for _, g := range inst.ClientSession.State.Guilds {
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
-			log.Fatal("Couldn't find schedule channel")
+			log.Println("Couldn't find schedule channel")
 			continue
 		}
 
@@ -80,7 +80,7 @@ func UpdateBirthdays(inst *bot.Instance) {
 		weekTime := util.GetCurrentWeekFromMondayAsTime()
 		birthdays, err := inst.BirthdayDao.GetAllBirthdaysForServerForWeek(g.ID, weekTime, g)
 		if err != nil && err.Error() != "Couldn't find birthday" {
-			log.Fatal("Error fetching birthdays for guild "+g.Name, err)
+			log.Println("Error fetching birthdays for guild "+g.Name, err)
 			continue
 		}
 
@@ -105,7 +105,7 @@ func UpdateBirthdays(inst *bot.Instance) {
 			announcementChannel := commands.FindAnnouncementsChannel(g, inst)
 
 			if announcementChannel == nil {
-				log.Fatal("Could not find announcement channel")
+				log.Println("Could not find announcement channel")
 				break
 			}
 
@@ -150,7 +150,7 @@ func UpdateSchedule(inst *bot.Instance) {
 	for _, g := range inst.ClientSession.State.Guilds {
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
-			log.Fatal("Couldn't find schedule channel")
+			log.Println("Couldn't find schedule channel")
 			continue
 		}
 
@@ -178,7 +178,7 @@ func PingEveryoneInScheduleChannel(guildID string, channelID string, s *discordg
 	}()
 	_, err := s.ChannelMessageSend(channelID, "@everyone")
 	if err != nil {
-		log.Fatal("Error pinging everyone", err)
+		log.Println("Error pinging everyone", err)
 		return
 	}
 }
@@ -197,14 +197,14 @@ func ClearSchedulesAndMakeEveryoneMad(inst *bot.Instance) {
 
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
-			log.Fatal("Couldn't find schedule channel")
+			log.Println("Couldn't find schedule channel")
 			continue
 		}
 
 		if schedChannel != nil {
 			msgs, err := inst.ClientSession.ChannelMessages(schedChannel.ID, 100, "", "", "")
 			if err != nil {
-				log.Fatal("Couldn't find schedule channel messages")
+				log.Println("Couldn't find schedule channel messages")
 				continue
 			}
 
@@ -239,7 +239,7 @@ func UpdateFact(inst *bot.Instance) {
 
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
-			log.Fatal("Couldn't find schedule channel")
+			log.Println("Couldn't find schedule channel")
 			continue
 		}
 
@@ -255,7 +255,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 	for _, g := range inst.ClientSession.State.Guilds {
 		schedChannel := commands.FindSchedChannel(inst, g.ID)
 		if schedChannel == nil {
-			log.Fatal("Couldn't find schedule channel")
+			log.Println("Couldn't find schedule channel")
 			continue
 		}
 
@@ -268,7 +268,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 		weekTime := util.GetCurrentWeekFromMondayAsTime()
 		evts, err := inst.EventDao.GetAllEventsForServerForWeek(g.ID, weekTime, g)
 		if err != nil && err.Error() != "Couldn't find event" {
-			log.Fatal("Error fetching events for guild "+g.Name, err)
+			log.Println("Error fetching events for guild "+g.Name, err)
 			continue
 		}
 
@@ -287,7 +287,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 			announcementChannel := commands.FindAnnouncementsChannel(g, inst)
 
 			if announcementChannel == nil {
-				log.Fatal("Could not find announcement channel")
+				log.Println("Could not find announcement channel")
 				break
 			}
 
@@ -316,7 +316,7 @@ func checkEvents(t time.Time, inst *bot.Instance) {
 				go bot.CycleEventParamsAsStatus(evt, inst)
 				role, err := commands.FindRoleByName(g.ID, inst.EventAttendeeRoleName)
 				if err != nil {
-					log.Fatal("Could not find attendee role")
+					log.Println("Could not find attendee role")
 				} else {
 					content = role.Mention()
 				}

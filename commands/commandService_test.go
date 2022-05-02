@@ -151,13 +151,13 @@ func insertTestBirthday() {
 
 	stmt, err := DB.Prepare(query)
 	if err != nil {
-		log.Fatal("Error inserting server", err)
+		log.Println("Error inserting server", err)
 	}
 	defer stmt.Close()
 
 	// We need to increment the birthday by 1 due to how it's being parsed
 	err = stmt.Exec("guild", "user", "11", "10", time.Now().Unix())
 	if err != nil {
-		log.Fatal("Error inserting birthday", err)
+		log.Println("Error inserting birthday", err)
 	}
 }

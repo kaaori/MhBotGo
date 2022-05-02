@@ -51,11 +51,11 @@ func initViper(configFilePath string) {
 
 	if err := config.ReadInConfig(); err != nil {
 		if _, ok := err.(config.ConfigFileNotFoundError); ok {
-			log.Fatal("Config file not found!\n\t\tEnsure file ./configs/config.json exists", err)
+			log.Println("Config file not found!\n\t\tEnsure file ./configs/config.json exists", err)
 			os.Exit(404)
 		} else {
 			// Config file was found but another error was produced
-			log.Fatal("Fatal error in loading config:\n\t\t", err)
+			log.Println("Fatal error in loading config:\n\t\t", err)
 			return
 		}
 	}
@@ -74,7 +74,7 @@ func main() {
 	// log.Println("TODO: Scan for guild mismatch in DB (added or removed to new guilds etc) ")
 
 	if _, err := os.Stat(config.GetString("dbLocation")); err != nil {
-		log.Fatal("DB Not found. Creating in " + config.GetString("dbLocation"))
+		log.Println("DB Not found. Creating in " + config.GetString("dbLocation"))
 		bot.ReadDML(config.GetString("dbLocation"))
 	}
 
@@ -92,7 +92,7 @@ func main() {
 
 	err := BotInstance.ClientSession.Open()
 	if err != nil {
-		log.Fatal("Error opening connection\n", err)
+		log.Println("Error opening connection\n", err)
 		return
 	}
 	// Defer the session cleanup until the application is closed

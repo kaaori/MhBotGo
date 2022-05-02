@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS Servers (
 );
 
 CREATE TABLE IF NOT EXISTS Events (
-    EventID                     INTEGER Primary Key AUTOINCREMENT,
+    EventID                     VARCHAR(256) Primary Key,
     ServerID                    VARCHAR(20),
     CreatorID                   VARCHAR(20),
     EventName                   VARCHAR(256),

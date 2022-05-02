@@ -20,7 +20,7 @@ var (
 // SetBotGame : Sets the bot's status to playing a game when an event is passed, or just a game if not
 func (inst *Instance) SetBotGame(s *discordgo.Session, game string) {
 	if err := s.UpdateGameStatus(0, game); err != nil {
-		log.Fatal("Error setting game", err)
+		log.Println("Error setting game", err)
 	}
 }
 

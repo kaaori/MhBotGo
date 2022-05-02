@@ -17,7 +17,7 @@ import (
 func ReadDML(dbLocation string) {
 	buf, err := ioutil.ReadFile("./data/MHBot-schemata.sql")
 	if err != nil {
-		log.Fatal("Error installing table schemata -> ", err)
+		log.Println("Error installing table schemata -> ", err)
 		return
 	}
 	log.Println("DML Loaded, creating tables")
@@ -35,14 +35,14 @@ func installDML(dml string, dbLocation string) {
 
 		log.Println("Tables created")
 	} else {
-		log.Fatal("DB Is null")
+		log.Println("DB Is null")
 	}
 
 }
 
 func isError(err error) {
 	if err != nil {
-		// log.Fatal("Error in SQL setup -> ", err)
+		// log.Println("Error in SQL setup -> ", err)
 		panic(err)
 	}
 }

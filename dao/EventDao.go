@@ -196,7 +196,7 @@ func (d *EventDao) GetEventByStartTime(guildID string, startTime int64, g *disco
 // UpdateEvent : Updates an event by object
 // Returns ID of new event
 // We need to offset the last announcement timestamp, as the rest will already have been offset upon insert
-func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
+func (d *EventDao) UpdateEvent(event *domain.Event) string {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
@@ -218,19 +218,18 @@ func (d *EventDao) UpdateEvent(event *domain.Event) int64 {
 		event.CreationTimestamp, event.StartTimestamp, event.LastAnnouncementTimestamp, event.DurationMinutes,
 		event.EventID)
 	if err != nil {
-		log.Fatal("Error updating event", err)
-		return -1
+		log.Println("Error updating event", err)
+		return "Invalid Event"
 	}
 	defer stmt.Close()
 
 	stmt.Exec()
 
-	return DB.LastInsertRowID()
+	return event.EventID
 }
 
 // DeleteEventByID : Deletes an event by ID
-// Returns ID of deleted event
-func (d *EventDao) DeleteEventByID(ID int64) int64 {
+func (d *EventDao) DeleteEventByID(ID string) string {
 	DB := GetConnection(ConnString)
 	defer DB.Close()
 
@@ -239,12 +238,12 @@ func (d *EventDao) DeleteEventByID(ID int64) int64 {
 
 	stmt, err := DB.Prepare(query, ID)
 	if err != nil {
-		log.Fatal("Error deleting event")
-		return -1
+		log.Println("Error deleting event")
+		return "Invalid event"
 	}
 	stmt.Exec()
 
-	return DB.LastInsertRowID()
+	return "Success"
 }
 
 // DeleteEventByStartTime : Deletes an event by given start time
@@ -294,31 +293,30 @@ func (d *EventDao) InsertEvent(event *domain.Event, s *discordgo.Session, g *dis
 	defer DB.Close()
 
 	query := `INSERT INTO Events 
-	(ServerID, CreatorID, EventName, EventLocation, HostName, CreationTimestamp, StartTimestamp, LastAnnouncementTimestamp, DurationMinutes) 
+	(EventId, ServerID, CreatorID, EventName, EventLocation, HostName, CreationTimestamp, StartTimestamp, LastAnnouncementTimestamp, DurationMinutes) 
 	VALUES
-	(?,?,?,?,?,?,?,?,?)`
+	(?,?,?,?,?,?,?,?,?,?)`
 
 	stmt, err := DB.Prepare(query)
 	if err != nil {
-		log.Fatal("Error inserting server", err)
+		log.Println("Error inserting server", err)
 
 		return nil
 	}
 	defer stmt.Close()
 
-	err = stmt.Exec(event.ServerID, event.CreatorID, event.EventName, event.EventLocation, event.HostName,
+	err = stmt.Exec(event.EventID, event.ServerID, event.CreatorID, event.EventName, event.EventLocation, event.HostName,
 		event.CreationTimestamp, event.StartTimestamp, -1, event.DurationMinutes)
 	if err != nil {
-		log.Fatal("Error inserting event", err)
+		log.Println("Error inserting event", err)
 		return nil
 	}
 
 	event, err = mapEventORMFields(event, s, g)
 	if err != nil {
-		log.Fatal("Error mapping ORM fields in new event", err)
+		log.Println("Error mapping ORM fields in new event", err)
 		return nil
 	}
-	event.EventID = DB.LastInsertRowID()
 
 	return event
 }
@@ -344,7 +342,7 @@ func mapRowToEvent(rows *sqlite3.Stmt, s *discordgo.Session, g *discordgo.Guild)
 
 	event, err = mapEventORMFields(event, s, g)
 	if err != nil {
-		log.Fatal("Error mapping ORM Fields in event", err)
+		log.Println("Error mapping ORM Fields in event", err)
 		return nil, err
 	}
 	profiler.StopAndPrintSeconds("Mapping ORM fields")
@@ -357,14 +355,14 @@ func mapEventORMFields(event *domain.Event, s *discordgo.Session, g *discordgo.G
 
 	// event.Creator = creator
 
-	event.CreationTime = time.Unix(event.CreationTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
-	event.StartTime = time.Unix(event.StartTimestamp-util.ServerLocOffset, 0).In(util.ServerLoc)
+	event.CreationTime = time.Unix(event.CreationTimestamp, 0)
+	event.StartTime = time.Unix(event.StartTimestamp, 0)
 	if event.LastAnnouncementTimestamp < 0 {
 		event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
 	} else {
-		event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp-util.ServerLocOffset, 0)
+		event.LastAnnouncementTime = time.Unix(event.LastAnnouncementTimestamp, 0)
 	}
-	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes)).In(util.ServerLoc)
+	event.EndTime = event.StartTime.Add(time.Minute * time.Duration(event.DurationMinutes))
 	event.TzOffset = util.ServerLocOffset
 	event.TzLoc = util.ServerLoc
 
@@ -378,7 +376,7 @@ func getCountFromStmt(stmt *sqlite3.Stmt) int {
 	}
 
 	if !hasRow {
-		log.Fatal("No events found")
+		log.Println("No events found")
 		return 0
 	}
 	var count int

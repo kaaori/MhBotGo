@@ -57,7 +57,7 @@ func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session) *domain.Fa
 
 	stmt, err := DB.Prepare(query)
 	if err != nil {
-		log.Fatal("Error inserting server", err)
+		log.Println("Error inserting server", err)
 
 		return nil
 	}
@@ -66,7 +66,7 @@ func (d *FactDao) InsertFact(fact *domain.Fact, s *discordgo.Session) *domain.Fa
 	// Default 0 unix time for last used time
 	err = stmt.Exec(fact.UserID, fact.FactContent, 0)
 	if err != nil {
-		log.Fatal("Error inserting fact", err)
+		log.Println("Error inserting fact", err)
 		return nil
 	}
 
@@ -90,7 +90,7 @@ func (d *FactDao) UpdateFactByUser(fact *domain.Fact, u *discordgo.User) string 
 	stmt, err := DB.Prepare(query,
 		fact.UserID, fact.FactContent, fact.LastUsedUnix)
 	if err != nil {
-		log.Fatal("Error updating fact", err)
+		log.Println("Error updating fact", err)
 		return "-1"
 	}
 	defer stmt.Close()

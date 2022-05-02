@@ -13,7 +13,7 @@ import (
 func GetConnection(connString string) *sqlite3.Conn {
 	DB, err := sqlite3.Open(connString)
 	if err != nil {
-		log.Fatal("Error Getting DB connection", err)
+		log.Println("Error Getting DB connection", err)
 		panic("Error connecting to sqlite")
 	}
 	DB.BusyTimeout(300 * time.Millisecond)

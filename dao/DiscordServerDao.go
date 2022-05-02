@@ -35,7 +35,7 @@ func (d *DiscordServerDao) GetServerByID(ID string) (*domain.DiscordServer, erro
 
 	server, err := getServerFromStmt(stmt, d)
 	if err != nil {
-		log.Fatal("Error getting server by ID", err)
+		log.Println("Error getting server by ID", err)
 		return nil, err
 	}
 	return server, err
@@ -58,7 +58,7 @@ func (d *DiscordServerDao) GetAllServers() ([]*domain.DiscordServer, error) {
 	for {
 		server, err := getServerFromStmt(stmt, d)
 		if err != nil {
-			log.Fatal("Error getting server by ID", err)
+			log.Println("Error getting server by ID", err)
 			return nil, err
 		}
 		if server != nil {
@@ -81,13 +81,13 @@ func (d *DiscordServerDao) InsertNewServer(serverID string) int64 {
 	query := "insert into Servers (ServerID, JoinTimeUnix) values (?,?)"
 	stmt, err := DB.Prepare(query)
 	if err != nil {
-		log.Fatal("Error inserting guild", err)
+		log.Println("Error inserting guild", err)
 		return -1
 	}
 	defer stmt.Close()
 	err = stmt.Exec(serverID, time.Now().Unix()-util.ServerLocOffset)
 	if err != nil {
-		log.Fatal("Error inserting guild", err)
+		log.Println("Error inserting guild", err)
 		return -1
 	}
 	return DB.LastInsertRowID()
@@ -101,7 +101,7 @@ func mapRowToServer(rows *sqlite3.Stmt, s *discordgo.Session) (domain.DiscordSer
 	}
 	server.Guild, err = s.State.Guild(server.ServerID)
 	if err != nil {
-		log.Fatal("Error finding guild: ", err)
+		log.Println("Error finding guild: ", err)
 		return server, err
 	}
 

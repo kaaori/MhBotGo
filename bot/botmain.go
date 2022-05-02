@@ -38,7 +38,7 @@ func InitBot(token string, dbLocation string) *Instance {
 
 	discord, err := discordgo.New("Bot " + token)
 	if err != nil {
-		log.Fatal("Error creating session\n", err)
+		log.Println("Error creating session\n", err)
 		return nil
 	}
 

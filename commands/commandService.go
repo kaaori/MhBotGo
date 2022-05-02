@@ -2,6 +2,7 @@ package commands
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math"
 	"os"
@@ -84,7 +85,7 @@ func ParseTemplate(guildID string) {
 	defer fSched.Close()
 
 	if err != nil {
-		log.Fatal("create file: ", err)
+		log.Println("create file: ", err)
 		return
 	}
 
@@ -92,7 +93,7 @@ func ParseTemplate(guildID string) {
 	defer fToday.Close()
 
 	if err != nil {
-		log.Fatal("create file: ", err)
+		log.Println("create file: ", err)
 		return
 	}
 	profiler.StopAndPrintSeconds("File creation")
@@ -100,13 +101,13 @@ func ParseTemplate(guildID string) {
 
 	events, err := BotInstance.EventDao.GetAllEventsForServerForWeek(guildID, weekTime, g)
 	if err != nil {
-		log.Fatal("", err)
+		log.Println("", err)
 		return
 	}
 
 	birthdays, err := BotInstance.BirthdayDao.GetAllBirthdaysForServerForWeek(guildID, weekTime, g)
 	if err != nil {
-		log.Fatal("", err)
+		log.Println("", err)
 		return
 	}
 
@@ -274,7 +275,7 @@ func ParseTemplate(guildID string) {
 		defer wg.Done()
 		err = tmpl.Execute(fSched, data)
 		if err != nil {
-			log.Fatal("Error executing template", err)
+			log.Println("Error executing template", err)
 		}
 	}()
 
@@ -282,7 +283,7 @@ func ParseTemplate(guildID string) {
 		defer wg.Done()
 		err = tmplToday.Execute(fToday, data)
 		if err != nil {
-			log.Fatal("Error executing template", err)
+			log.Println("Error executing template", err)
 		}
 	}()
 
@@ -379,7 +380,7 @@ func parseAndSendSched(ctx *exrouter.Context) {
 func sendHelpMessage(ctx *exrouter.Context) {
 	dmChannel, err := ctx.Ses.UserChannelCreate(ctx.Msg.Author.ID)
 	if err != nil {
-		log.Fatal("Error sending DM: ", err)
+		log.Println("Error sending DM: ", err)
 		ctx.Reply("I couldn't send you a DM for some reason, sorry!")
 		return
 	}
@@ -486,7 +487,7 @@ func setBirthday(ctx *exrouter.Context) bool {
 			birthday = BotInstance.BirthdayDao.InsertBirthday(birthday, BotInstance.ClientSession, guild)
 		}
 		if birthday == nil {
-			log.Fatal("Error getting birthday after insert")
+			log.Println("Error getting birthday after insert")
 			return false
 		}
 
@@ -518,7 +519,7 @@ func postEventStats(ctx *exrouter.Context) {
 	nearestEvent, err := BotInstance.EventDao.GetNextEventOrDefault(guild.ID, guild)
 	nearestEventStr := ""
 	if err != nil {
-		log.Fatal("Error retrieving next event")
+		log.Println("Error retrieving next event")
 		ctx.Reply("Error retrieving stats, please try again later.")
 		return
 	} else if nearestEvent != nil {
@@ -547,14 +548,19 @@ func addEvent(ctx *exrouter.Context) bool {
 	event.CreationTimestamp = time.Now().Unix()
 	event.DurationMinutes = 120
 	if !validateNewEventArgs(ctx, event) {
-		log.Fatal("Error validating event args")
+		log.Println("Error validating event args")
 		return false
 	}
+
+	log.Println(event.StartTime)
+
+	guildEvent := createGuildEvent(ctx, event)
+	event.EventID = guildEvent.ID
 
 	guild, _ := BotInstance.ClientSession.Guild(ctx.Msg.GuildID)
 	event = BotInstance.EventDao.InsertEvent(event, BotInstance.ClientSession, guild)
 	if event == nil {
-		log.Fatal("Error getting event after insert")
+		log.Println("Error getting event after insert")
 		return false
 	}
 
@@ -585,15 +591,52 @@ func removeEvent(ctx *exrouter.Context) bool {
 		ctx.Reply("Could not find that event, please try again")
 		return false
 	}
-	BotInstance.EventDao.DeleteEventByID(referencedEvent.EventID)
-	embed := GetEmbedFromEvent(referencedEvent, "deleted from ")
-	BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
 
-	// If our event is outside of the current week period, dont refresh the schedule
-	if referencedEvent.StartTime.After(util.GetCurrentWeekFromMondayAsTime().AddDate(0, 0, 7)) {
+	if removeGuildEvent(ctx, referencedEvent) {
+		BotInstance.EventDao.DeleteEventByID(referencedEvent.EventID)
+		embed := GetEmbedFromEvent(referencedEvent, "deleted from ")
+		BotInstance.ClientSession.ChannelMessageSendEmbed(ctx.Msg.ChannelID, embed)
+
+		// If our event is outside of the current week period, dont refresh the schedule
+		if referencedEvent.StartTime.After(util.GetCurrentWeekFromMondayAsTime().AddDate(0, 0, 7)) {
+			return false
+		}
+		return true
+	}
+
+	return false
+}
+
+func removeGuildEvent(ctx *exrouter.Context, referencedEvent *domain.Event) bool {
+	err := ctx.Ses.GuildScheduledEventDelete(ctx.Msg.GuildID, referencedEvent.EventID)
+	if err != nil {
+		log.Printf("Couldn't remove event")
+		ctx.Reply("Something went wrong removing the event. Please try again later.")
 		return false
 	}
 	return true
+}
+
+// Create a guild event
+func createGuildEvent(ctx *exrouter.Context, event *domain.Event) *discordgo.GuildScheduledEvent {
+	// Create the event
+	scheduledEvent, err := ctx.Ses.GuildScheduledEventCreate(ctx.Msg.GuildID, &discordgo.GuildScheduledEventParams{
+		Name:               event.EventName,
+		Description:        "Hosted by - " + event.HostName,
+		ScheduledStartTime: &event.StartTime,
+		ScheduledEndTime:   &event.EndTime,
+		EntityType:         discordgo.GuildScheduledEventEntityTypeExternal,
+		EntityMetadata:     &discordgo.GuildScheduledEventEntityMetadata{Location: event.EventLocation},
+		PrivacyLevel:       discordgo.GuildScheduledEventPrivacyLevelGuildOnly,
+	})
+
+	if err != nil {
+		log.Printf("Error creating scheduled event: %v", err)
+		return nil
+	}
+
+	fmt.Println("Created scheduled event:", scheduledEvent.Name)
+	return scheduledEvent
 }
 
 func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
@@ -604,6 +647,8 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 	}
 
 	event.StartTimestamp = t.Unix()
+	event.StartTime = t
+	event.EndTime = t.Add(time.Hour * 2)
 
 	if hostName := ctx.Args.Get(2); "" != hostName {
 		event.HostName = hostName
@@ -624,6 +669,25 @@ func validateNewEventArgs(ctx *exrouter.Context, event *domain.Event) bool {
 		return false
 	}
 	return true
+}
+
+func validateDateString(ctx *exrouter.Context, dateString string) (time.Time, bool) {
+	if dateString := ctx.Args.Get(1); "" != dateString {
+		t, err := dateparse.ParseLocal(dateString)
+		if err != nil {
+			log.Println("Invalid time format? ", err)
+			ctx.Reply("Please check your date format and try again")
+			return time.Now().In(util.ServerLoc), false
+		}
+		// Don't adjust to server time?
+		if t.Before(time.Now()) {
+			ctx.Reply("Make sure the scheduled event is not in the past!")
+			return time.Now(), false
+		}
+		return t, true
+	}
+
+	return time.Now(), false
 }
 
 // GetEmbedFromEvent : Returns a discord embed with the relevant event details
@@ -660,21 +724,6 @@ func GetAnnounceEmbedFromEvent(event *domain.Event, eventEmbedText string, event
 	return baseEmbed
 }
 
-func validateDateString(ctx *exrouter.Context, dateString string) (time.Time, bool) {
-	if dateString := ctx.Args.Get(1); "" != dateString {
-		t, err := dateparse.ParseAny(dateString)
-		if err != nil {
-			log.Fatal("Invalid time format? ", err)
-			ctx.Reply("Please check your date format and try again")
-			return time.Now().In(util.ServerLoc), false
-		}
-		// Don't adjust to server time?
-		return t, true
-	}
-	return time.Now().In(util.ServerLoc), false
-
-}
-
 // AuthAdmin : Authenticates the user has admin perm
 func AuthAdmin(ctx *exrouter.Context) bool {
 	return MemberHasPermission(ctx.Ses, ctx.Msg.GuildID, ctx.Msg.Author.ID, 8)
@@ -698,7 +747,7 @@ func checkRoleByName(ctx *exrouter.Context, roleName string) bool {
 	}
 	roleToCheck, err := FindRoleByName(ctx.Msg.GuildID, roleName)
 	if err != nil {
-		log.Fatal("Error getting role", err)
+		log.Println("Error getting role", err)
 	}
 	if roleToCheck == nil {
 		ctx.Reply("Oops, your server has not been configured properly!\n" +
@@ -762,7 +811,7 @@ func GetNewFact(inst *bot.Instance, currentFact string, isUserFact bool) (string
 }
 
 func fallbackGetUserFactOrDefault(inst *bot.Instance, err error) (string, string) {
-	log.Fatal("Getting user fact instead of normal fact", err)
+	log.Println("Getting user fact instead of normal fact", err)
 	userFact := getUserFact(inst)
 	if userFact == nil {
 		return "There was an issue getting the fact.", "Sorry! There's been an issue getting the fact for today ;-;<br/>" +
@@ -792,7 +841,7 @@ func FindRoleByName(guildID string, roleName string) (*discordgo.Role, error) {
 func FindSchedChannel(inst *bot.Instance, guildID string) *discordgo.Channel {
 	guildChannels, err := inst.ClientSession.GuildChannels(guildID)
 	if err != nil {
-		log.Fatal("Error while fetching guild ", err)
+		log.Println("Error while fetching guild ", err)
 	}
 
 	var schedChannel *discordgo.Channel
@@ -803,7 +852,7 @@ func FindSchedChannel(inst *bot.Instance, guildID string) *discordgo.Channel {
 		schedChannel = nil
 	}
 	if schedChannel == nil {
-		log.Fatal("Sched channel not found")
+		log.Println("Sched channel not found")
 		return nil
 	}
 	return schedChannel
@@ -819,7 +868,7 @@ func FindAnnouncementsChannel(guild *discordgo.Guild, inst *bot.Instance) *disco
 		announcementChannel = nil
 	}
 	if announcementChannel == nil {
-		log.Fatal("Announcement channel not found")
+		log.Println("Announcement channel not found")
 		return nil
 	}
 	return announcementChannel
@@ -829,7 +878,7 @@ func FindAnnouncementsChannel(guild *discordgo.Guild, inst *bot.Instance) *disco
 func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Message, error) {
 	msgHistory, err := inst.ClientSession.ChannelMessages(schedChannelID, 100, "", "", "")
 	if err != nil {
-		log.Fatal("Couldn't find sched message")
+		log.Println("Couldn't find sched message")
 		return nil, err
 	}
 
@@ -839,7 +888,7 @@ func GetSchedMessage(schedChannelID string, inst *bot.Instance) (*discordgo.Mess
 		if schedMsg != nil && msg.Content != "@everyone" {
 			err = inst.ClientSession.ChannelMessageDelete(msg.ChannelID, msg.ID)
 			if err != nil {
-				log.Fatal("Error deleting message")
+				log.Println("Error deleting message")
 			}
 		} else if msg != nil && msg.Author.ID == inst.ClientSession.State.User.ID && msg.Content != "@everyone" {
 			schedMsg = msg
@@ -882,7 +931,7 @@ func SendHelpImage(dmChannel *discordgo.Channel) {
 
 	fHelp, err := os.Open(helpFileName)
 	if err != nil {
-		log.Fatal("Error getting schedule banner", err)
+		log.Println("Error getting schedule banner", err)
 		fHelp.Close()
 		return
 	}
@@ -947,14 +996,14 @@ func takeAndSendTargeted(schedChannelID string, guildID string, inst *bot.Instan
 
 	fSched, err := os.Open(scheduleFileName)
 	if err != nil {
-		log.Fatal("Error getting schedule banner", err)
+		log.Println("Error getting schedule banner", err)
 		fSched.Close()
 		return
 	}
 
 	fFacts, err := os.Open(todayFileName)
 	if err != nil {
-		log.Fatal("Error getting schedule banner", err)
+		log.Println("Error getting schedule banner", err)
 		fFacts.Close()
 		return
 	}

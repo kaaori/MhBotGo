@@ -24,7 +24,7 @@ func queryForRows(query string, db *sqlite3.Conn, args ...interface{}) (*sqlite3
 	stmt, err := db.Prepare(query, args...)
 	if err != nil {
 		stmt.Close()
-		log.Fatal("Error querying: ", err)
+		log.Println("Error querying: ", err)
 		return nil, err
 	}
 	defer func() {

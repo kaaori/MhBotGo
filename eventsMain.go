@@ -25,9 +25,9 @@ func guildJoinEvent(s *discordgo.Session, guild *discordgo.GuildCreate) {
 		panic("DB was nil")
 	}
 	if server, err := BotInstance.ServerDao.GetServerByID(guild.ID); err != nil {
-		log.Fatal("Error occured looking for guild!", err)
+		log.Println("Error occured looking for guild!", err)
 	} else if err != nil {
-		log.Fatal("Error getting server", err)
+		log.Println("Error getting server", err)
 	} else if server == nil {
 		log.Println("New guild detected, initialising database for " + guild.Name)
 		initDbForGuild(guild)

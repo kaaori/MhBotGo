@@ -39,17 +39,17 @@ func TakeScreenshot(w int64, h int64, element string, fileName string, urlString
 	if isTargeted {
 		if err := chromedp.Run(ctx, elementScreenshot(urlString,
 			element, &buf)); err != nil {
-			log.Fatal("Error setting device metrics: ", err)
+			log.Println("Error setting device metrics: ", err)
 		}
 	} else {
 		if err := chromedp.Run(ctx, fullScreenshot(urlString,
 			100, &buf, w, h)); err != nil {
-			log.Fatal("Error setting device metrics: ", err)
+			log.Println("Error setting device metrics: ", err)
 		}
 	}
 
 	if err := ioutil.WriteFile(fileName, buf, 0644); err != nil {
-		log.Fatal("Error writing file: ", err)
+		log.Println("Error writing file: ", err)
 	}
 }
 
